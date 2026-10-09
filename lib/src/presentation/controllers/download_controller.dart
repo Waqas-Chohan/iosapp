@@ -63,7 +63,8 @@ class DownloadController extends ChangeNotifier {
       if (msg.contains('RequestLimitExceeded') ||
           msg.toLowerCase().contains('rate limit')) {
         errorMessage = 'YouTube is rate-limiting right now.\n'
-            'Wait a minute or two, then try again.';
+            'Wait a minute or two, or switch between Wi-Fi & '
+            'mobile data, then try again.';
       } else {
         errorMessage = 'Could not fetch the video.\n${_shortError(e)}';
       }

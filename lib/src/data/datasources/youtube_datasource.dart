@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import '../../domain/entities/video_download_info.dart';
@@ -14,15 +15,27 @@ import '../../domain/entities/video_download_info.dart';
 ///   (rate-limit friendly).
 class YoutubeDatasource {
   final YoutubeExplode _yt = YoutubeExplode();
+  final Dio _dio = Dio();
   final Map<String, VideoDownloadInfo> _infoCache = {};
   final Map<String, StreamInfo> _streamInfos = {};
 
   Future<VideoDownloadInfo> fetch(String urlOrId) async {
-    final video = await _yt.videos.get(urlOrId);
-    final id = video.id.value;
+    final parsed = VideoId.parseVideoId(urlOrId);
+    final id = parsed ?? urlOrId.trim();
 
     final cached = _infoCache[id];
     if (cached != null) return cached;
+
+    // Metadata path resilient to a blocked / bot-checked watch page.
+    final video = await _tryGetVideo(id);
+    final meta = video != null
+        ? (
+            video.title,
+            video.author,
+            video.thumbnails.highResUrl,
+            video.duration,
+          )
+        : await _oembedMetadata(id);
 
     final manifest = await _getManifest(id);
     _streamInfos.removeWhere((k, _) => k.startsWith('$id:'));
@@ -48,10 +61,10 @@ class YoutubeDatasource {
 
     final info = VideoDownloadInfo(
       videoId: id,
-      title: video.title,
-      author: video.author,
-      thumbnailUrl: video.thumbnails.highResUrl,
-      duration: video.duration,
+      title: meta.$1,
+      author: meta.$2,
+      thumbnailUrl: meta.$3,
+      duration: meta.$4,
       streams: [
         ..._sortedTrim(muxed, 4),
         ..._sortedTrim(audio, 4),
@@ -60,6 +73,34 @@ class YoutubeDatasource {
     );
     _infoCache[id] = info;
     return info;
+  }
+
+  Future<Video?> _tryGetVideo(String id) async {
+    try {
+      return await _yt.videos.get(id);
+    } catch (_) {
+      // Watch page blocked/throttled — metadata via oEmbed fallback.
+      return null;
+    }
+  }
+
+  Future<(String, String, String, Duration?)> _oembedMetadata(String id) async {
+    try {
+      final url =
+          'https://www.youtube.com/oembed?url='
+          '${Uri.encodeQueryComponent('https://www.youtube.com/watch?v=$id')}'
+          '&format=json';
+      final res = await _dio.get<Map<String, dynamic>>(url);
+      final data = res.data;
+      return (
+        (data?['title'] as String?) ?? id,
+        (data?['author_name'] as String?) ?? 'Unknown',
+        (data?['thumbnail_url'] as String?) ?? '',
+        null,
+      );
+    } catch (_) {
+      return (id, 'Unknown', '', null);
+    }
   }
 
   /// Assembles a fragment-based (HLS) stream into a byte stream.
@@ -74,23 +115,32 @@ class YoutubeDatasource {
   }
 
   Future<StreamManifest> _getManifest(String id) async {
-    try {
-      // safari = high-quality muxed (HLS, m3u8) for 720p/1080p+audio.
-      return await _yt.videos.streams.getManifest(
-        id,
-        ytClients: const [
-          YoutubeApiClient.androidSdkless,
-          YoutubeApiClient.safari,
-        ],
-        requireWatchPage: false,
-      );
-    } catch (_) {
-      // Fallback: single reliable client.
-      return await _yt.videos.streams.getManifest(
-        id,
-        requireWatchPage: false,
-      );
+    // Preferred quality combo first; rotate on failure/rate-limit.
+    final combos = <List<YoutubeApiClient>>[
+      const [
+        YoutubeApiClient.androidSdkless,
+        YoutubeApiClient.safari,
+      ],
+      [YoutubeApiClient.ios],
+      const [YoutubeApiClient.androidVr],
+    ];
+
+    Object? lastError;
+    for (final combo in combos) {
+      try {
+        return await _yt.videos.streams.getManifest(
+          id,
+          ytClients: combo,
+          requireWatchPage: false,
+        );
+      } catch (e) {
+        lastError = e;
+        if (e.toString().contains('RequestLimitExceeded')) {
+          await Future<void>.delayed(const Duration(seconds: 4));
+        }
+      }
     }
+    throw lastError ?? StateError('Unable to fetch streams for $id');
   }
 
   StreamOption _toOption(StreamInfo s, String videoId, StreamCategory c) {
