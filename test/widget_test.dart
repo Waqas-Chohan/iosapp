@@ -8,36 +8,126 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:my_first_app/src/domain/entities/video_download_info.dart';
+import 'package:my_first_app/src/domain/repositories/video_repository.dart';
+import 'package:my_first_app/src/domain/usecases/extract_video_id.dart';
 import 'package:my_first_app/src/presentation/app.dart';
+import 'package:my_first_app/src/presentation/screens/home_screen.dart';
 import 'package:my_first_app/src/presentation/screens/login_screen.dart';
 
 void main() {
-  testWidgets('Splash screen shows the logo, then navigates to Login',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+  group('ExtractVideoId', () {
+    const extract = ExtractVideoId();
 
-    // Splash screen starts with exactly one logo image.
-    expect(tester.takeException(), isNull);
-    expect(find.byType(Image), findsOneWidget);
+    test('extracts id from watch URLs', () {
+      expect(extract('https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
+          'dQw4w9WgXcQ');
+      expect(extract('youtube.com/watch?v=dQw4w9WgXcQ&t=10'),
+          'dQw4w9WgXcQ');
+      expect(extract('https://music.youtube.com/watch?v=dQw4w9WgXcQ'),
+          'dQw4w9WgXcQ');
+    });
 
-    // After the 2.5s splash delay and route transition, Login is shown.
-    await tester.pump(const Duration(seconds: 3));
-    await tester.pumpAndSettle();
+    test('extracts id from youtu.be / shorts / embed', () {
+      expect(extract('https://youtu.be/dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+      expect(extract('https://www.youtube.com/shorts/dQw4w9WgXcQ'),
+          'dQw4w9WgXcQ');
+      expect(
+          extract('https://www.youtube.com/embed/dQw4w9WgXcQ'),
+          'dQw4w9WgXcQ');
+    });
 
-    expect(find.text('Welcome Back!'), findsOneWidget);
+    test('accepts a bare 11-character id', () {
+      expect(extract('dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+    });
+
+    test('rejects invalid input', () {
+      expect(extract(''), isNull);
+      expect(extract('not a link'), isNull);
+      expect(extract('https://example.com/video'), isNull);
+    });
   });
 
-  testWidgets('Login screen renders fields and the CTA button',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+  group('App flow', () {
+    testWidgets('splash navigates to login after delay',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(const MyApp());
+      expect(tester.takeException(), isNull);
+      expect(find.byType(Image), findsOneWidget); // splash logo
 
-    expect(find.text('Email Address'), findsOneWidget);
-    expect(find.text('Password'), findsOneWidget);
-    expect(find.text('Forgot Password?'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, 'Login'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(find.text('Welcome Back!'), findsOneWidget);
+    });
 
-    await tester.enterText(find.byType(TextField).first, 'test@gym.com');
-    expect(find.text('test@gym.com'), findsOneWidget);
+    testWidgets('login is pre-filled and opens the home screen',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+      // Dummy credentials are autofilled.
+      expect(find.text('demo@musically.app'), findsOneWidget);
+      expect(find.text('musically123'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Login'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Musically'), findsOneWidget);
+      expect(find.text('Fetch Video'), findsOneWidget);
+    });
+  });
+
+  group('Home screen', () {
+    testWidgets('renders input and rejects invalid links offline',
+        (WidgetTester tester) async {
+      final repo = _FakeVideoRepository();
+      await tester.pumpWidget(
+        MaterialApp(home: HomeScreen(repository: repo)),
+      );
+
+      expect(find.text('Musically'), findsOneWidget);
+      expect(find.text('Fetch Video'), findsOneWidget);
+
+      // Invalid input → local error, no network/plugin calls.
+      await tester.enterText(find.byType(TextField), 'not a youtube link');
+      await tester.tap(find.text('Fetch Video'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('does not look like a valid YouTube link'),
+        findsOneWidget,
+      );
+      expect(repo.fetchCalls, 0);
+    });
   });
 }
+
+class _FakeVideoRepository implements VideoRepository {
+  int fetchCalls = 0;
+
+  @override
+  Future<VideoDownloadInfo> fetchVideoInfo(String urlOrId) async {
+    fetchCalls++;
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String> downloadToLocal(
+    StreamOption option,
+    DownloadProgressCallback? onProgress,
+  ) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void cancelDownload() {}
+
+  @override
+  Future<void> saveVideoToGallery(String filePath) {
+    throw UnimplementedError();
+  }
+
+  @override
+  void close() {}
+}
+
 

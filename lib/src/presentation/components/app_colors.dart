@@ -16,5 +16,8 @@ abstract final class AppColors {
 
   /// Background of the rounded input fields on the login screen.
   static const Color inputFill = Color(0xFFF7F7F7);
+
+  /// Destructive / error tone (design palette has none, used for states).
+  static const Color errorRed = Color(0xFFC62828);
 }
 

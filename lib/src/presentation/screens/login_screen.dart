@@ -3,14 +3,12 @@ import 'package:flutter/material.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/login_input_field.dart';
+import 'home_screen.dart';
 
 /// Login screen, reproduced from the GYM SAAS Figma design
 /// (frame `login` `1510:10546`, 390 x 844).
 ///
-/// Layout follows the design from top to bottom:
-/// heading + description, email + password pill fields, a right-aligned
-/// "Forgot Password?" link, and the orange pill Login button pinned
-/// near the bottom.
+/// Demo mode: credentials are pre-filled and any values are accepted.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -19,8 +17,10 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _emailController =
+      TextEditingController(text: 'demo@musically.app');
+  final TextEditingController _passwordController =
+      TextEditingController(text: 'musically123');
 
   @override
   void dispose() {
@@ -29,12 +29,11 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Entry point for the login flow.
-  ///
-  /// TODO: wire the authentication usecase (domain/usecases) once the
-  /// backend contract is available. Currently UI-only by design.
+  /// Demo login — no backend yet; navigates straight to the home screen.
   void _onLoginPressed() {
-    // No-op for now — matches the current UI-only milestone.
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+    );
   }
 
   @override
@@ -95,6 +94,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: AppTextStyles.linkLabel,
                             ),
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Demo mode — credentials are pre-filled.\n'
+                          'Tap Login to continue.',
+                          textAlign: TextAlign.center,
+                          style: AppTextStyles.description,
                         ),
                         const Spacer(),
                         Padding(

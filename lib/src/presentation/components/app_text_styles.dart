@@ -75,4 +75,49 @@ abstract final class AppTextStyles {
     height: 1.5,
     color: Colors.white,
   );
+
+  /// Fetched video title — Poppins Medium, 16, navy.
+  static const TextStyle videoTitle = TextStyle(
+    fontFamily: poppins,
+    fontWeight: FontWeight.w600,
+    fontSize: 16,
+    height: 1.4,
+    color: AppColors.splashNavy,
+  );
+
+  /// Meta row (author, timestamps) — Poppins Regular, 13, gray.
+  static const TextStyle videoMeta = TextStyle(
+    fontFamily: poppins,
+    fontWeight: FontWeight.w400,
+    fontSize: 13,
+    height: 1.4,
+    color: AppColors.textGray,
+  );
+
+  /// Section heading (e.g. "Available Downloads") — Sora Bold, 17, navy.
+  static const TextStyle sectionTitle = TextStyle(
+    fontFamily: sora,
+    fontWeight: FontWeight.w700,
+    fontSize: 17,
+    height: 1.3,
+    color: AppColors.splashNavy,
+  );
+
+  /// Download option title — Poppins Medium, 15, navy.
+  static const TextStyle optionTitle = TextStyle(
+    fontFamily: poppins,
+    fontWeight: FontWeight.w500,
+    fontSize: 15,
+    height: 1.4,
+    color: AppColors.splashNavy,
+  );
+
+  /// Download option subtitle — Poppins Regular, 13, gray.
+  static const TextStyle optionSubtitle = TextStyle(
+    fontFamily: poppins,
+    fontWeight: FontWeight.w400,
+    fontSize: 13,
+    height: 1.4,
+    color: AppColors.textGray,
+  );
 }
