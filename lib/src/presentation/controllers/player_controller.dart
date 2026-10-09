@@ -160,6 +160,7 @@ class PlayerController extends ChangeNotifier {
   }
 
   Future<void> play() async {
+    await _ensureAudioSession();
     await _videoController?.play();
     notifyListeners();
   }

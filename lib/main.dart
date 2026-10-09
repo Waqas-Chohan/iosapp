@@ -14,6 +14,7 @@ Future<void> main() async {
   // background / lock screen / Dynamic Island (with UIBackgroundModes).
   final session = await AudioSession.instance;
   await session.configure(const AudioSessionConfiguration.music());
+  await session.setActive(true);
 
   // Lock-screen / Dynamic Island remote commands → the active player.
   _mediaChannel.setMethodCallHandler((call) async {

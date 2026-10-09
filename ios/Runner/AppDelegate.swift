@@ -50,6 +50,8 @@ import MediaPlayer
     )
     mediaChannel = channel
 
+    UIApplication.shared.beginReceivingRemoteControlEvents()
+
     let center = MPRemoteCommandCenter.shared()
     center.playCommand.isEnabled = true
     center.playCommand.addTarget { [weak channel] _ in
@@ -78,14 +80,18 @@ import MediaPlayer
         return
       }
       let args = call.arguments as? [String: Any]
-      let info: [String: Any] = [
+      var info: [String: Any] = [
         MPMediaItemPropertyTitle: args?["title"] as? String ?? "Musically",
         MPMediaItemPropertyArtist: args?["author"] as? String ?? "",
         MPMediaItemPropertyPlaybackDuration:
           (args?["duration"] as? NSNumber)?.doubleValue ?? 0.0,
         MPNowPlayingInfoPropertyPlaybackRate: 1.0,
       ]
+      if let duration = args?["duration"] as? NSNumber, duration.doubleValue > 0 {
+        info[MPMediaItemPropertyPlaybackDuration] = duration.doubleValue
+      }
       MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+      MPNowPlayingInfoCenter.default().playbackState = .playing
       result(nil)
     }
   }
