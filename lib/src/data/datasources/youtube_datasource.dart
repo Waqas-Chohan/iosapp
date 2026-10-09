@@ -103,6 +103,23 @@ class YoutubeDatasource {
     }
   }
 
+  /// Re-fetches the manifest and returns a fresh URL for [tag], updating the
+  /// cached [StreamInfo] (used to recover from 403/expired download URLs).
+  Future<String?> refreshStreamUrl(String videoId, int tag) async {
+    try {
+      final manifest = await _getManifest(videoId);
+      for (final s in manifest.streams) {
+        if (s.tag == tag) {
+          _streamInfos['$videoId:$tag'] = s;
+          return s.fragments.isEmpty ? s.url.toString() : null;
+        }
+      }
+    } catch (_) {
+      // Keep the previous URL — retry will use it as-is.
+    }
+    return null;
+  }
+
   /// Assembles a fragment-based (HLS) stream into a byte stream.
   Stream<List<int>> streamFor(String videoId, int tag) {
     final streamInfo = _streamInfos['$videoId:$tag'];

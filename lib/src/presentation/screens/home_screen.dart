@@ -281,10 +281,37 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.only(bottom: 10),
               child: StreamOptionTile(
                 option: o,
-                onTap: () => _controller.startDownload(o),
+                onTap: () => _startDownload(o),
               ),
             ))
         .toList();
+  }
+
+  /// Runs a download, then keeps Library + Photos in sync automatically.
+  Future<void> _startDownload(StreamOption option) async {
+    await _controller.startDownload(option);
+    if (!mounted) return;
+
+    // 1) The item is already persisted — refresh the Library view.
+    await widget.libraryModel?.refresh();
+    if (!mounted) return;
+
+    // 2) Videos are also pushed to the iOS Photos library automatically.
+    final item = _controller.downloadedItem;
+    if (item == null || !item.isVideo) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _controller.saveToGallery();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Saved to your Library and Photos ✓'),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Photos save skipped: $e')),
+      );
+    }
   }
 
   List<Widget> _buildDonePanel() {

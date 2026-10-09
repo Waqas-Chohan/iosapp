@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../data/repositories/library_repository_impl.dart';
 import '../../domain/repositories/library_repository.dart';
 import '../../domain/repositories/video_repository.dart';
+import '../components/app_colors.dart';
 import '../components/mini_player_bar.dart';
 import '../controllers/library_model.dart';
 import '../controllers/player_controller.dart';
@@ -75,17 +76,29 @@ class _AppShellState extends State<AppShell> {
                 : MiniPlayerBar(player: _player, onTap: _openPlayer),
           ),
           NavigationBar(
+            backgroundColor: Colors.white,
+            indicatorColor: AppColors.accentOrange.withValues(alpha: 0.18),
             selectedIndex: _tab,
             onDestinationSelected: (i) => setState(() => _tab = i),
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
+                icon: Icon(
+                  _tab == 0 ? Icons.home : Icons.home_outlined,
+                  color: _tab == 0
+                      ? AppColors.splashNavy
+                      : AppColors.textGray,
+                ),
                 label: 'Home',
               ),
               NavigationDestination(
-                icon: Icon(Icons.library_music_outlined),
-                selectedIcon: Icon(Icons.library_music),
+                icon: Icon(
+                  _tab == 1
+                      ? Icons.library_music
+                      : Icons.library_music_outlined,
+                  color: _tab == 1
+                      ? AppColors.splashNavy
+                      : AppColors.textGray,
+                ),
                 label: 'Library',
               ),
             ],

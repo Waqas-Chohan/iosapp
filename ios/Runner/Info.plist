@@ -30,6 +30,10 @@
 	<string>Musically saves downloaded videos to your photo library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Musically needs photo library access so you can save downloaded videos.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

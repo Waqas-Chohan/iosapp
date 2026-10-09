@@ -5,14 +5,21 @@ import 'package:video_player/video_player.dart';
 
 import '../../domain/entities/library_item.dart';
 
+enum LoopMode { off, all, one }
+
 /// Spotify-style queue + playback engine over local files.
 ///
 /// Uses `video_player`/AVPlayer for both videos (muxed) and audio tracks.
 class PlayerController extends ChangeNotifier {
+  static const List<double> playbackSpeeds = [1.0, 1.25, 1.5, 2.0];
+
   VideoPlayerController? _videoController;
   List<LibraryItem> playlist = [];
   int _index = -1;
   bool _advancing = false;
+
+  LoopMode loopMode = LoopMode.off;
+  double speed = 1.0;
 
   LibraryItem? get current =>
       (_index >= 0 && _index < playlist.length) ? playlist[_index] : null;
@@ -50,6 +57,7 @@ class PlayerController extends ChangeNotifier {
     final controller = VideoPlayerController.file(File(item.filePath));
     await controller.initialize();
     controller.setLooping(false);
+    await controller.setPlaybackSpeed(speed);
     controller.addListener(_onValueChanged);
     _videoController = controller;
     await controller.play();
@@ -62,9 +70,26 @@ class PlayerController extends ChangeNotifier {
         vc.value.duration > Duration.zero &&
         vc.value.position >= vc.value.duration) {
       _advancing = true;
-      next();
+      _handleTrackFinished();
       _advancing = false;
       return;
+    }
+    notifyListeners();
+  }
+
+  Future<void> _handleTrackFinished() async {
+    switch (loopMode) {
+      case LoopMode.one:
+        await _videoController?.seekTo(Duration.zero);
+        await _videoController?.play();
+      case LoopMode.all:
+        await _load((_index + 1) % playlist.length);
+      case LoopMode.off:
+        if (_index < playlist.length - 1) {
+          await _load(_index + 1);
+        } else {
+          await _videoController?.pause();
+        }
     }
     notifyListeners();
   }
@@ -99,6 +124,18 @@ class PlayerController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void cycleLoopMode() {
+    loopMode = LoopMode.values[(loopMode.index + 1) % LoopMode.values.length];
+    notifyListeners();
+  }
+
+  Future<void> cycleSpeed() async {
+    final i = playbackSpeeds.indexOf(speed);
+    speed = playbackSpeeds[(i + 1) % playbackSpeeds.length];
+    await _videoController?.setPlaybackSpeed(speed);
+    notifyListeners();
+  }
+
   void stop() {
     final vc = _videoController;
     vc?.removeListener(_onValueChanged);
@@ -115,3 +152,4 @@ class PlayerController extends ChangeNotifier {
     super.dispose();
   }
 }
+

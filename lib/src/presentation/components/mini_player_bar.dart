@@ -58,6 +58,11 @@ class MiniPlayerBar extends StatelessWidget {
                 onPressed: player.next,
                 icon: const Icon(Icons.skip_next, color: AppColors.splashNavy),
               ),
+              IconButton(
+                onPressed: player.stop,
+                tooltip: 'Stop & close',
+                icon: const Icon(Icons.close, color: AppColors.textGray),
+              ),
             ],
           ),
         ),

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -70,10 +72,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     child: Center(
                       child: current.isVideo
                           ? _VideoSurface(videoController: vc)
-                          : Artwork(
-                              thumbnailPath: current.thumbnailPath,
-                              size: 300,
-                              borderRadius: 20,
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Artwork(
+                                  thumbnailPath: current.thumbnailPath,
+                                  size: 300,
+                                  borderRadius: 20,
+                                ),
+                                const SizedBox(height: 24),
+                                const _EqualizerBars(),
+                              ],
                             ),
                     ),
                   ),
@@ -145,6 +154,47 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton.icon(
+                        onPressed: widget.player.cycleLoopMode,
+                        icon: Icon(
+                          widget.player.loopMode == LoopMode.one
+                              ? Icons.repeat_one
+                              : Icons.repeat,
+                          color: widget.player.loopMode == LoopMode.off
+                              ? Colors.white38
+                              : AppColors.accentOrange,
+                          size: 22,
+                        ),
+                        label: Text(
+                          switch (widget.player.loopMode) {
+                            LoopMode.off => 'Loop off',
+                            LoopMode.all => 'Loop all',
+                            LoopMode.one => 'Loop one',
+                          },
+                          style: TextStyle(
+                            color: widget.player.loopMode == LoopMode.off
+                                ? Colors.white38
+                                : Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: widget.player.cycleSpeed,
+                        icon: const Icon(Icons.speed,
+                            color: Colors.white70, size: 22),
+                        label: Text(
+                          _speedLabel(widget.player.speed),
+                          style:
+                              const TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -199,6 +249,62 @@ class _TimeRow extends StatelessWidget {
         Text(_fmt(player.duration.inMilliseconds.toDouble()),
             style: const TextStyle(color: Colors.white60, fontSize: 12)),
       ],
+    );
+  }
+}
+
+String _speedLabel(double speed) {
+  if (speed == speed.roundToDouble()) {
+    return '${speed.round()}x';
+  }
+  return '${speed}x';
+}
+
+/// Animated equalizer bars shown behind audio-only tracks (Spotify vibe).
+class _EqualizerBars extends StatefulWidget {
+  const _EqualizerBars();
+
+  @override
+  State<_EqualizerBars> createState() => _EqualizerBarsState();
+}
+
+class _EqualizerBarsState extends State<_EqualizerBars>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = _controller.value;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: List.generate(5, (i) {
+            final wave = sin((t * 2 * pi) + (i * 1.1));
+            final height = 8 + ((wave + 1) / 2) * 22;
+            return Container(
+              width: 6,
+              height: height,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: AppColors.accentOrange.withValues(alpha: 0.9),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

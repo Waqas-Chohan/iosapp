@@ -33,20 +33,46 @@ class VideoRepositoryImpl implements VideoRepository {
     if (option.isFragmentBased) {
       await _downloadFragments(option, path, onProgress);
     } else {
-      await _dio.download(
-        option.url,
-        path,
-        onReceiveProgress: (received, total) {
-          if (total > 0) onProgress?.call(received, total);
-        },
-        cancelToken: _cancelToken,
-      );
+      await _downloadDirect(option, path, onProgress);
     }
 
     if (!await File(path).exists()) {
       throw Exception('Download failed: file was not saved.');
     }
     return path;
+  }
+
+  /// Direct URL download. YouTube's CDN requires a `Range` header
+  /// (plain requests return 403), so we send one and retry once with a
+  /// freshly-refreshed manifest URL on failure.
+  Future<void> _downloadDirect(
+    StreamOption option,
+    String path,
+    DownloadProgressCallback? onProgress,
+  ) async {
+    try {
+      await _dio.download(
+        option.url,
+        path,
+        options: Options(headers: const {'Range': 'bytes=0-'}),
+        onReceiveProgress: (received, total) {
+          if (total > 0) onProgress?.call(received, total);
+        },
+        cancelToken: _cancelToken,
+      );
+    } catch (e) {
+      final fresh = await _youtube.refreshStreamUrl(option.videoId, option.tag);
+      if (fresh == null || fresh.isEmpty) rethrow;
+      await _dio.download(
+        fresh,
+        path,
+        options: Options(headers: const {'Range': 'bytes=0-'}),
+        onReceiveProgress: (received, total) {
+          if (total > 0) onProgress?.call(received, total);
+        },
+        cancelToken: _cancelToken,
+      );
+    }
   }
 
   Future<void> _downloadFragments(
