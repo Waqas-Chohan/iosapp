@@ -65,9 +65,9 @@ class YoutubeDatasource {
       duration: meta.$4,
       streams: [
         ..._sortedTrim(
-            verified.where((o) => o.category == StreamCategory.muxed), 4),
+            verified.where((o) => o.category == StreamCategory.muxed), 1000),
         ..._sortedTrim(
-            verified.where((o) => o.category == StreamCategory.audio), 4),
+            verified.where((o) => o.category == StreamCategory.audio), 1000),
       ],
     );
     _infoCache[id] = info;
@@ -221,14 +221,22 @@ class YoutubeDatasource {
   }
 
   List<StreamOption> _sortedTrim(Iterable<StreamOption> options, int max) {
-    int rank(StreamOption o) {
-      final m = RegExp(r'^(\d+)').firstMatch(o.label);
-      return m == null ? 0 : int.tryParse(m.group(1)!) ?? 0;
-    }
+    final sorted = options.toList()
+      ..sort((a, b) => _streamPriority(b).compareTo(_streamPriority(a)));
+    return sorted.take(max.clamp(1, 1000)).toList();
+  }
 
-    return (options.toList()..sort((a, b) => rank(b).compareTo(rank(a))))
-        .take(max)
-        .toList();
+  static int _streamPriority(StreamOption option) {
+    final label = option.label.toLowerCase();
+    final match = RegExp(r'(\d+)').firstMatch(label);
+    final value = match == null ? 0 : int.tryParse(match.group(1)!) ?? 0;
+    final categoryBoost = switch (option.category) {
+      StreamCategory.muxed => 10000,
+      StreamCategory.videoOnly => 9000,
+      StreamCategory.audio => 8000,
+    };
+    final kindBoost = label.contains('kbps') ? 200 : 0;
+    return value + categoryBoost + kindBoost;
   }
 
   void close() => _yt.close();

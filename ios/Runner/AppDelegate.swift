@@ -1,3 +1,4 @@
+import AVFoundation
 import Flutter
 import UIKit
 import MediaPlayer
@@ -28,6 +29,14 @@ import MediaPlayer
 
   /// Wires lock-screen / Dynamic Island remote commands to the Flutter side.
   private func setupMediaBridge() {
+    do {
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.playback, mode: .default, options: [.allowAirPlay, .allowBluetooth])
+      try session.setActive(true)
+    } catch {
+      // Best-effort; app keeps the Flutter audio session init as fallback.
+    }
+
     guard mediaChannel == nil,
           let root = window?.rootViewController,
           let messenger = (root as AnyObject)

@@ -238,31 +238,42 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 18),
           Text('Choose a format', style: AppTextStyles.sectionTitle),
           const SizedBox(height: 10),
-          DropdownButtonFormField<StreamOption>(
-            key: ValueKey(info.videoId),
-            initialValue: selected,
-            isExpanded: true,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: AppColors.inputFill,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.inputFill,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE6E6E6), width: 1),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButtonFormField<StreamOption>(
+                key: ValueKey(info.videoId),
+                initialValue: selected,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  filled: false,
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                ),
+                items: options
+                    .map((o) => DropdownMenuItem<StreamOption>(
+                          value: o,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Text(
+                              _formatOptionLabel(o),
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.optionTitle,
+                            ),
+                          ),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedOption = v),
               ),
             ),
-            items: options
-                .map((o) => DropdownMenuItem<StreamOption>(
-                      value: o,
-                      child: Text(
-                        _formatOptionLabel(o),
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.optionTitle,
-                      ),
-                    ))
-                .toList(),
-            onChanged: (v) => setState(() => _selectedOption = v),
           ),
           const SizedBox(height: 6),
           Text(

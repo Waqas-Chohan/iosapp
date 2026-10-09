@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/entities/library_collection.dart';
 import '../../domain/entities/library_item.dart';
 import '../../domain/entities/video_download_info.dart';
 import '../components/app_colors.dart';
@@ -10,15 +11,30 @@ import '../controllers/player_controller.dart';
 import 'player_screen.dart';
 
 /// Spotify-style Library: all downloaded tracks/videos, play + manage.
-class LibraryScreen extends StatelessWidget {
+class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
     required this.player,
     required this.libraryModel,
+    this.collections = const [],
   });
 
   final PlayerController player;
   final LibraryModel libraryModel;
+  final List<LibraryCollection> collections;
+
+  @override
+  State<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends State<LibraryScreen> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +54,21 @@ class LibraryScreen extends StatelessWidget {
         ),
       ),
       body: ListenableBuilder(
-        listenable: libraryModel,
+        listenable: widget.libraryModel,
         builder: (context, _) {
-          if (!libraryModel.loaded) {
+          if (!widget.libraryModel.loaded) {
             return const Center(child: CircularProgressIndicator());
           }
-          final items = libraryModel.items;
+          final items = widget.libraryModel.items;
+          final filtered = _searchController.text.trim().isEmpty
+              ? items
+              : items.where((item) {
+                  final q = _searchController.text.trim().toLowerCase();
+                  final haystack =
+                      '${item.title} ${item.author} ${item.qualityLabel}'.toLowerCase();
+                  return haystack.contains(q);
+                }).toList();
+
           if (items.isEmpty) {
             return const Center(
               child: Padding(
@@ -65,23 +90,104 @@ class LibraryScreen extends StatelessWidget {
               ),
             );
           }
-          return ListView.separated(
+
+          return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, index) =>
-                _LibraryTile(
-              item: items[index],
-              onTap: () {
-                player.playQueue(items, startIndex: index);
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => PlayerScreen(player: player),
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.inputFill,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE6E6E6)),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'Search your music',
+                    border: InputBorder.none,
+                    icon: Icon(Icons.search, color: AppColors.splashNavy),
                   ),
-                );
-              },
-              onDelete: () => libraryModel.remove(items[index].id),
-            ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (widget.collections.isNotEmpty) ...[
+                const Text('My Collections', style: AppTextStyles.sectionTitle),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: widget.collections.map((collection) {
+                    return Container(
+                      width: 150,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE6E6E6)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            collection.type == 'Album'
+                                ? Icons.album_outlined
+                                : Icons.playlist_play,
+                            color: AppColors.accentOrange,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            collection.name,
+                            style: AppTextStyles.optionTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${collection.type} · ${collection.itemIds.length} songs',
+                            style: AppTextStyles.optionSubtitle,
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 18),
+              ],
+              const Text('All songs', style: AppTextStyles.sectionTitle),
+              const SizedBox(height: 10),
+              if (filtered.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Text(
+                      'No tracks match your search.',
+                      style: AppTextStyles.description,
+                    ),
+                  ),
+                )
+              else
+                ...filtered.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final item = entry.value;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _LibraryTile(
+                      item: item,
+                      onTap: () {
+                        widget.player.playQueue(filtered, startIndex: index);
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => PlayerScreen(player: widget.player),
+                          ),
+                        );
+                      },
+                      onDelete: () => widget.libraryModel.remove(item.id),
+                    ),
+                  );
+                }),
+            ],
           );
         },
       ),
