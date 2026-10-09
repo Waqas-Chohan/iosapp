@@ -8,18 +8,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:my_first_app/main.dart';
+import 'package:my_first_app/src/presentation/app.dart';
+import 'package:my_first_app/src/presentation/screens/login_screen.dart';
 
 void main() {
-  testWidgets('Hello iPhone smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Splash screen shows the logo, then navigates to Login',
+      (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
 
-    // Verify our app bar title renders.
-    expect(find.text('Hello iPhone!'), findsOneWidget);
+    // Splash screen starts with exactly one logo image.
+    expect(tester.takeException(), isNull);
+    expect(find.byType(Image), findsOneWidget);
 
-    // Verify our iPhone icon and caption render.
-    expect(find.byIcon(Icons.phone_iphone), findsOneWidget);
-    expect(find.text('This app is running on iOS!'), findsOneWidget);
+    // After the 2.5s splash delay and route transition, Login is shown.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome Back!'), findsOneWidget);
+  });
+
+  testWidgets('Login screen renders fields and the CTA button',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+
+    expect(find.text('Email Address'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+    expect(find.text('Forgot Password?'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Login'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'test@gym.com');
+    expect(find.text('test@gym.com'), findsOneWidget);
   });
 }
+

@@ -1,0 +1,13 @@
+# Binary assets must never be line-ending converted.
+*.ttf   binary
+*.otf   binary
+*.woff  binary
+*.woff2 binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+
+# Keep lockfiles as text (harmless conversion).
+pubspec.lock text
