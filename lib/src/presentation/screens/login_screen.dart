@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/login_input_field.dart';
-import 'home_screen.dart';
+import 'app_shell.dart';
 
 /// Login screen, reproduced from the GYM SAAS Figma design
 /// (frame `login` `1510:10546`, 390 x 844).
@@ -29,10 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Demo login — no backend yet; navigates straight to the home screen.
+  /// Demo login — no backend yet; lands on the app shell.
   void _onLoginPressed() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+      MaterialPageRoute<void>(builder: (_) => const AppShell()),
     );
   }
 

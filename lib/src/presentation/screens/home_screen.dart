@@ -2,21 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/repositories/video_repository_impl.dart';
+import '../../domain/entities/video_download_info.dart';
 import '../../domain/repositories/video_repository.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/download_progress_panel.dart';
-import '../components/preview_dialog.dart';
 import '../components/stream_option_tile.dart';
 import '../components/video_info_card.dart';
 import '../controllers/download_controller.dart';
+import '../controllers/library_model.dart';
+import '../controllers/player_controller.dart';
+import 'player_screen.dart';
 
 /// Musically home — paste/type a link, pick a quality, download it.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.repository});
+  const HomeScreen({super.key, this.repository, this.player, this.libraryModel});
 
   /// Injectable repository (tests); defaults to the real stack.
   final VideoRepository? repository;
+
+  /// Shared player (provided by the app shell).
+  final PlayerController? player;
+
+  /// Shared library (provided by the app shell).
+  final LibraryModel? libraryModel;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -29,8 +38,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _controller =
-        DownloadController(widget.repository ?? VideoRepositoryImpl());
+    _controller = DownloadController(
+      widget.repository ?? VideoRepositoryImpl(),
+      libraryRepository: widget.libraryModel?.repository,
+    );
   }
 
   @override
@@ -212,24 +223,24 @@ class _HomeScreenState extends State<HomeScreen> {
         return [
           VideoInfoCard(info: info),
           const SizedBox(height: 20),
-          Text('Available Downloads', style: AppTextStyles.sectionTitle),
-          const SizedBox(height: 10),
           if (info.streams.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'No directly downloadable streams for this video.',
-                style: AppTextStyles.description,
-              ),
+            Text(
+              'No downloadable streams for this video.',
+              style: AppTextStyles.description,
             )
-          else
-            ...info.streams.map((option) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: StreamOptionTile(
-                    option: option,
-                    onTap: () => _controller.startDownload(option),
-                  ),
-                )),
+          else ...[
+            _sectionHeader(Icons.movie_outlined, 'Videos (with audio)'),
+            const SizedBox(height: 10),
+            ..._streamTiles(info.muxed),
+            const SizedBox(height: 18),
+            _sectionHeader(Icons.library_music_outlined, 'Audio tracks'),
+            const SizedBox(height: 10),
+            ..._streamTiles(info.audio),
+            const SizedBox(height: 18),
+            _sectionHeader(Icons.videocam_outlined, 'Video only (no audio)'),
+            const SizedBox(height: 10),
+            ..._streamTiles(info.videoOnly),
+          ],
         ];
       case DownloadStatus.downloading:
         return [
@@ -245,8 +256,40 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _sectionHeader(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.splashBlue),
+        const SizedBox(width: 6),
+        Text(title, style: AppTextStyles.sectionTitle),
+      ],
+    );
+  }
+
+  List<Widget> _streamTiles(List<StreamOption> options) {
+    if (options.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text('Not available for this video.',
+              style: AppTextStyles.description),
+        ),
+      ];
+    }
+    return options
+        .map((o) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: StreamOptionTile(
+                option: o,
+                onTap: () => _controller.startDownload(o),
+              ),
+            ))
+        .toList();
+  }
+
   List<Widget> _buildDonePanel() {
     final path = _controller.downloadedPath;
+    final isVideo = _controller.downloadedCategory == StreamCategory.muxed;
     return [
       Container(
         padding: const EdgeInsets.all(16),
@@ -273,28 +316,36 @@ class _HomeScreenState extends State<HomeScreen> {
               overflow: TextOverflow.ellipsis,
               style: AppTextStyles.optionSubtitle,
             ),
+            const SizedBox(height: 6),
+            const Text(
+              'Added to your Library ✓',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.splashBlue,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 14),
             Row(
               children: [
                 Expanded(
                   child: _ActionButton(
                     icon: Icons.play_circle_fill,
-                    label: 'Preview',
+                    label: 'Play',
                     backgroundColor: AppColors.splashNavy,
-                    onPressed: path == null
-                        ? null
-                        : () => showVideoPreview(context, path),
+                    onPressed: path == null ? null : _onPlayDownloaded,
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.photo_library_outlined,
-                    label: 'Save to Photos',
-                    backgroundColor: AppColors.accentOrange,
-                    onPressed: path == null ? null : _onSaveToGallery,
+                if (isVideo)
+                  Expanded(
+                    child: _ActionButton(
+                      icon: Icons.photo_library_outlined,
+                      label: 'Save to Photos',
+                      backgroundColor: AppColors.accentOrange,
+                      onPressed: path == null ? null : _onSaveToGallery,
+                    ),
                   ),
-                ),
               ],
             ),
           ],
@@ -314,6 +365,19 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     ];
+  }
+
+  Future<void> _onPlayDownloaded() async {
+    final item = _controller.downloadedItem;
+    final player = widget.player;
+    if (item == null || player == null) return;
+    await player.playQueue([item]);
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlayerScreen(player: player),
+      ),
+    );
   }
 
   Future<void> _onFetchPressed() async {

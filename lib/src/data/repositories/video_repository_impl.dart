@@ -30,19 +30,50 @@ class VideoRepositoryImpl implements VideoRepository {
     final dir = await _storage.downloadsDirectory();
     final path = '${dir.path}/${_safeFileName(option)}';
 
-    await _dio.download(
-      option.url,
-      path,
-      onReceiveProgress: (received, total) {
-        if (total > 0) onProgress?.call(received, total);
-      },
-      cancelToken: _cancelToken,
-    );
+    if (option.isFragmentBased) {
+      await _downloadFragments(option, path, onProgress);
+    } else {
+      await _dio.download(
+        option.url,
+        path,
+        onReceiveProgress: (received, total) {
+          if (total > 0) onProgress?.call(received, total);
+        },
+        cancelToken: _cancelToken,
+      );
+    }
 
     if (!await File(path).exists()) {
       throw Exception('Download failed: file was not saved.');
     }
     return path;
+  }
+
+  Future<void> _downloadFragments(
+    StreamOption option,
+    String path,
+    DownloadProgressCallback? onProgress,
+  ) async {
+    final expected = option.sizeBytes ?? 0;
+    var received = 0;
+    final sink = File(path).openWrite();
+
+    try {
+      await for (final chunk in _youtube.streamFor(option.videoId, option.tag)) {
+        if (_cancelToken!.isCancelled) {
+          throw DioException.requestCancelled(
+            requestOptions: RequestOptions(path: path),
+            reason: 'Download cancelled',
+          );
+        }
+        sink.add(chunk);
+        received += chunk.length;
+        if (expected > 0) onProgress?.call(received, expected);
+      }
+      await sink.flush();
+    } finally {
+      await sink.close();
+    }
   }
 
   @override
@@ -67,3 +98,4 @@ class VideoRepositoryImpl implements VideoRepository {
     return 'video_${DateTime.now().millisecondsSinceEpoch}.$ext';
   }
 }
+

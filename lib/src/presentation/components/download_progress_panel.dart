@@ -13,14 +13,16 @@ class DownloadProgressPanel extends StatelessWidget {
     required this.onCancel,
   });
 
-  final double progress;
+  final double? progress;
   final String totalLabel;
   final String speedLabel;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
-    final percent = (progress.clamp(0, 1) * 100).toStringAsFixed(0);
+    final percent = progress == null
+        ? '—'
+        : '${(progress!.clamp(0, 1) * 100).toStringAsFixed(0)}%';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -45,7 +47,7 @@ class DownloadProgressPanel extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(
-              value: progress.clamp(0, 1),
+              value: progress,
               minHeight: 8,
               backgroundColor: AppColors.inputFill,
               valueColor: const AlwaysStoppedAnimation(

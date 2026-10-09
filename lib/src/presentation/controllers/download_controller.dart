@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import '../../data/repositories/library_repository_impl.dart';
+import '../../domain/entities/library_item.dart';
 import '../../domain/entities/video_download_info.dart';
+import '../../domain/repositories/library_repository.dart';
 import '../../domain/repositories/video_repository.dart';
 import '../../domain/usecases/extract_video_id.dart';
 
@@ -8,20 +11,27 @@ enum DownloadStatus { idle, loading, ready, downloading, done, error }
 
 /// Drives the home screen state machine.
 ///
-/// Purely UI-policy logic; all I/O goes through the injected
-/// [VideoRepository] (domain contract).
+/// All I/O goes through the injected [VideoRepository] + [LibraryRepository].
 class DownloadController extends ChangeNotifier {
-  DownloadController(this._repository) : _extract = ExtractVideoId();
+  DownloadController(
+    this._repository, {
+    LibraryRepository? libraryRepository,
+  })  : _library = libraryRepository ?? LibraryRepositoryImpl(),
+        _extract = ExtractVideoId();
 
   final VideoRepository _repository;
+  final LibraryRepository _library;
   final ExtractVideoId _extract;
 
   DownloadStatus status = DownloadStatus.idle;
   VideoDownloadInfo? info;
   String? errorMessage;
   String? downloadedPath;
+  LibraryItem? downloadedItem;
+  StreamCategory? downloadedCategory;
 
-  double progress = 0;
+  /// Progress 0..1, or `null` when the total size is unknown.
+  double? progress;
   String totalLabel = '';
   String speedLabel = '';
 
@@ -49,8 +59,14 @@ class DownloadController extends ChangeNotifier {
       info = await _repository.fetchVideoInfo(videoId);
       status = DownloadStatus.ready;
     } catch (e) {
-      errorMessage =
-          'Could not fetch the video.\n${_shortError(e)}';
+      final msg = e.toString();
+      if (msg.contains('RequestLimitExceeded') ||
+          msg.toLowerCase().contains('rate limit')) {
+        errorMessage = 'YouTube is rate-limiting right now.\n'
+            'Wait a minute or two, then try again.';
+      } else {
+        errorMessage = 'Could not fetch the video.\n${_shortError(e)}';
+      }
       status = DownloadStatus.error;
     }
     notifyListeners();
@@ -65,22 +81,58 @@ class DownloadController extends ChangeNotifier {
     totalLabel = '';
     speedLabel = '';
     downloadedPath = null;
+    downloadedItem = null;
+    downloadedCategory = null;
     status = DownloadStatus.downloading;
     notifyListeners();
 
     try {
       final path = await _repository.downloadToLocal(option, _onProgress);
       if (status != DownloadStatus.downloading) return;
-      downloadedPath = path;
+      await _registerInLibrary(option, path);
       progress = 1;
+      totalLabel = totalLabel.isEmpty
+          ? _formatBytes(option.sizeBytes ?? _received)
+          : totalLabel;
       status = DownloadStatus.done;
     } catch (e) {
-      if (status != DownloadStatus.downloading) return;
-      errorMessage =
-          'Download failed.\n${_shortError(e)}';
-      status = DownloadStatus.error;
+      if (status != DownloadStatus.downloading) {
+        status = DownloadStatus.ready; // user cancelled
+      } else {
+        errorMessage = 'Download failed.\n${_shortError(e)}';
+        status = DownloadStatus.error;
+      }
     }
     notifyListeners();
+  }
+
+  Future<void> _registerInLibrary(StreamOption option, String path) async {
+    final video = info;
+    if (video == null) return;
+    downloadedCategory = option.category;
+    final thumbnailPath = await _library.saveThumbnail(
+      video.thumbnailUrl,
+      video.videoId,
+    );
+    downloadedItem = LibraryItem(
+      id: '${option.videoId}_${option.tag}_'
+          '${DateTime.now().millisecondsSinceEpoch}',
+      videoId: video.videoId,
+      title: video.title,
+      author: video.author,
+      filePath: path,
+      category: option.category,
+      qualityLabel: option.label,
+      container: option.container,
+      thumbnailPath: thumbnailPath,
+      createdAt: DateTime.now(),
+      durationSeconds: video.duration?.inSeconds,
+    );
+    try {
+      await _library.addItem(downloadedItem!);
+    } catch (_) {
+      // Registry failure must never block the completed download.
+    }
   }
 
   void _onProgress(int received, int total) {
@@ -88,16 +140,19 @@ class DownloadController extends ChangeNotifier {
     _received = received;
 
     final now = DateTime.now();
-    final elapsedMs = _lastTick == null ? 0 : now.difference(_lastTick!).inMilliseconds;
-    if (elapsedMs < 200) return; // Throttle rebuilds to ~5/s.
+    final elapsedMs =
+        _lastTick == null ? 0 : now.difference(_lastTick!).inMilliseconds;
+    if (elapsedMs < 200) return;
 
     final bytesSinceTick = received - _lastReceivedAtTick;
     final speedBytesPerSec = bytesSinceTick / (elapsedMs / 1000);
 
     _lastTick = now;
     _lastReceivedAtTick = received;
-    progress = _total > 0 ? _received / _total : 0;
-    totalLabel = '${_formatBytes(_received)} / ${_formatBytes(_total)}';
+    progress = _total > 0 ? _received / _total : null;
+    totalLabel = _total > 0
+        ? '${_formatBytes(_received)} / ${_formatBytes(_total)}'
+        : _formatBytes(_received);
     speedLabel = '${_formatBytes(speedBytesPerSec.round())}/s';
     notifyListeners();
   }
@@ -110,6 +165,9 @@ class DownloadController extends ChangeNotifier {
 
   Future<void> saveToGallery() async {
     if (downloadedPath == null) return;
+    if (downloadedCategory != StreamCategory.muxed) {
+      throw Exception('Only videos can be saved to Photos.');
+    }
     await _repository.saveVideoToGallery(downloadedPath!);
   }
 
@@ -118,6 +176,8 @@ class DownloadController extends ChangeNotifier {
     info = null;
     errorMessage = null;
     downloadedPath = null;
+    downloadedItem = null;
+    downloadedCategory = null;
     progress = 0;
     notifyListeners();
   }
