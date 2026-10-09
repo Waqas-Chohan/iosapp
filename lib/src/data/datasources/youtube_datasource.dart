@@ -9,9 +9,11 @@ class YoutubeDatasource {
   Future<VideoDownloadInfo> fetch(String urlOrId) async {
     final video = await _yt.videos.get(urlOrId);
     // Set requireWatchPage: false for a faster, lighter request.
-    // Muxed streams (audio+video in one file) are the free-stack ceiling.
+    // `VideoId.fromString` in v3.1.0 only accepts String|VideoId, so
+    // pass the id string — NOT the Video object — or it will throw
+    // "Invalid YouTube video ID or URL".
     final manifest = await _yt.videos.streams.getManifest(
-      video,
+      video.id.value,
       requireWatchPage: false,
     );
 
