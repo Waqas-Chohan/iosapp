@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -22,6 +23,7 @@ class PlayerController extends ChangeNotifier {
 
   PlayerController() {
     instance = this;
+    unawaited(_listenForInterruptions());
   }
 
   VideoPlayerController? _videoController;
@@ -66,6 +68,9 @@ class PlayerController extends ChangeNotifier {
 
     final item = current;
     if (item == null) return;
+    // Re-assert the music audio session right before every playback —
+    // other plugins or iOS events may have reset it.
+    await _ensureAudioSession();
     final controller = VideoPlayerController.file(File(item.filePath));
     await controller.initialize();
     controller.setLooping(false);
@@ -74,6 +79,33 @@ class PlayerController extends ChangeNotifier {
     _videoController = controller;
     await controller.play();
     unawaited(_syncNowPlaying(item));
+  }
+
+  Future<void> _ensureAudioSession() async {
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+      await session.setActive(true);
+    } catch (_) {
+      // best-effort — playback still works, just not in background.
+    }
+  }
+
+  Future<void> _listenForInterruptions() async {
+    try {
+      final session = await AudioSession.instance;
+      session.interruptionEventStream.listen((event) {
+        // Resume playback automatically when an interruption ends
+        // (calls, Siri, alarms…) — only if background play is requested.
+        if (!event.begin &&
+            event.type == AudioInterruptionType.pause &&
+            backgroundPlayEnabled) {
+          unawaited(_videoController?.play());
+        }
+      });
+    } catch (_) {
+      // ignore
+    }
   }
 
   /// Pushes track metadata to the lock screen / Dynamic Island.
