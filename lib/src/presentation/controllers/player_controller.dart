@@ -1,17 +1,28 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../domain/entities/library_item.dart';
 
 enum LoopMode { off, all, one }
 
+const MethodChannel _mediaChannel = MethodChannel('musically/media');
+
 /// Spotify-style queue + playback engine over local files.
 ///
 /// Uses `video_player`/AVPlayer for both videos (muxed) and audio tracks.
 class PlayerController extends ChangeNotifier {
   static const List<double> playbackSpeeds = [1.0, 1.25, 1.5, 2.0];
+
+  /// Last created controller — used by lock-screen / Dynamic Island commands.
+  static PlayerController? instance;
+
+  PlayerController() {
+    instance = this;
+  }
 
   VideoPlayerController? _videoController;
   List<LibraryItem> playlist = [];
@@ -20,6 +31,7 @@ class PlayerController extends ChangeNotifier {
 
   LoopMode loopMode = LoopMode.off;
   double speed = 1.0;
+  bool backgroundPlayEnabled = true;
 
   LibraryItem? get current =>
       (_index >= 0 && _index < playlist.length) ? playlist[_index] : null;
@@ -61,6 +73,20 @@ class PlayerController extends ChangeNotifier {
     controller.addListener(_onValueChanged);
     _videoController = controller;
     await controller.play();
+    unawaited(_syncNowPlaying(item));
+  }
+
+  /// Pushes track metadata to the lock screen / Dynamic Island.
+  Future<void> _syncNowPlaying(LibraryItem item) async {
+    try {
+      await _mediaChannel.invokeMethod<void>('setNowPlaying', {
+        'title': item.title,
+        'author': '${item.qualityLabel} · ${item.author}',
+        'duration': item.durationSeconds ?? 0,
+      });
+    } catch (_) {
+      // Platform channel not available (e.g. desktop tests) — ignore.
+    }
   }
 
   void _onValueChanged() {
@@ -98,6 +124,22 @@ class PlayerController extends ChangeNotifier {
     final vc = _videoController;
     if (vc == null) return;
     vc.value.isPlaying ? await vc.pause() : await vc.play();
+    notifyListeners();
+  }
+
+  Future<void> play() async {
+    await _videoController?.play();
+    notifyListeners();
+  }
+
+  Future<void> pause() async {
+    await _videoController?.pause();
+    notifyListeners();
+  }
+
+  /// Enables/disables background playback (remote commands + island).
+  Future<void> toggleBackgroundPlay() async {
+    backgroundPlayEnabled = !backgroundPlayEnabled;
     notifyListeners();
   }
 
@@ -148,6 +190,7 @@ class PlayerController extends ChangeNotifier {
 
   @override
   void dispose() {
+    if (instance == this) instance = null;
     _videoController?.dispose();
     super.dispose();
   }

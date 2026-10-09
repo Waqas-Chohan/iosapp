@@ -7,7 +7,7 @@ import '../../domain/repositories/video_repository.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/download_progress_panel.dart';
-import '../components/stream_option_tile.dart';
+import '../components/format.dart';
 import '../components/video_info_card.dart';
 import '../controllers/download_controller.dart';
 import '../controllers/library_model.dart';
@@ -34,6 +34,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _linkController = TextEditingController();
   late final DownloadController _controller;
+  StreamOption? _selectedOption;
 
   @override
   void initState() {
@@ -220,27 +221,69 @@ class _HomeScreenState extends State<HomeScreen> {
         ];
       case DownloadStatus.ready:
         final info = _controller.info!;
+        final options = info.streams;
+        if (options.isEmpty) {
+          return const [
+            SizedBox(height: 20),
+            Text(
+              'No downloadable formats for this video on your network.',
+              style: AppTextStyles.description,
+            ),
+          ];
+        }
+        final selected =
+            options.contains(_selectedOption) ? _selectedOption! : options.first;
         return [
           VideoInfoCard(info: info),
-          const SizedBox(height: 20),
-          if (info.streams.isEmpty)
-            Text(
-              'No downloadable streams for this video.',
-              style: AppTextStyles.description,
-            )
-          else ...[
-            _sectionHeader(Icons.movie_outlined, 'Videos (with audio)'),
-            const SizedBox(height: 10),
-            ..._streamTiles(info.muxed),
-            const SizedBox(height: 18),
-            _sectionHeader(Icons.library_music_outlined, 'Audio tracks'),
-            const SizedBox(height: 10),
-            ..._streamTiles(info.audio),
-            const SizedBox(height: 18),
-            _sectionHeader(Icons.videocam_outlined, 'Video only (no audio)'),
-            const SizedBox(height: 10),
-            ..._streamTiles(info.videoOnly),
-          ],
+          const SizedBox(height: 18),
+          Text('Choose a format', style: AppTextStyles.sectionTitle),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<StreamOption>(
+            key: ValueKey(info.videoId),
+            initialValue: selected,
+            isExpanded: true,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.inputFill,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            items: options
+                .map((o) => DropdownMenuItem<StreamOption>(
+                      value: o,
+                      child: Text(
+                        _formatOptionLabel(o),
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.optionTitle,
+                      ),
+                    ))
+                .toList(),
+            onChanged: (v) => setState(() => _selectedOption = v),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Only formats that work on your network are listed.',
+            style: AppTextStyles.optionSubtitle,
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: FilledButton.icon(
+              onPressed: () => _startDownload(selected),
+              icon: const Icon(Icons.download, size: 20),
+              label: const Text('Download'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.accentOrange,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+              ),
+            ),
+          ),
         ];
       case DownloadStatus.downloading:
         return [
@@ -256,35 +299,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Widget _sectionHeader(IconData icon, String title) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.splashBlue),
-        const SizedBox(width: 6),
-        Text(title, style: AppTextStyles.sectionTitle),
-      ],
-    );
-  }
-
-  List<Widget> _streamTiles(List<StreamOption> options) {
-    if (options.isEmpty) {
-      return [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Text('Not available for this video.',
-              style: AppTextStyles.description),
-        ),
-      ];
-    }
-    return options
-        .map((o) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: StreamOptionTile(
-                option: o,
-                onTap: () => _startDownload(o),
-              ),
-            ))
-        .toList();
+  String _formatOptionLabel(StreamOption o) {
+    final kind = o.category == StreamCategory.audio
+        ? 'Audio'
+        : 'Video + Audio';
+    final size =
+        o.sizeBytes != null ? ' · ${formatBytes(o.sizeBytes)}' : '';
+    final hls = o.isFragmentBased ? ' · HLS' : '';
+    return '${o.label} · ${o.container} · $kind$size$hls';
   }
 
   /// Runs a download, then keeps Library + Photos in sync automatically.
@@ -408,6 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _onFetchPressed() async {
+    setState(() => _selectedOption = null);
     await _controller.fetchVideo(_linkController.text);
   }
 

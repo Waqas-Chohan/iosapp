@@ -18,6 +18,7 @@ class YoutubeDatasource {
   final Dio _dio = Dio();
   final Map<String, VideoDownloadInfo> _infoCache = {};
   final Map<String, StreamInfo> _streamInfos = {};
+  final Map<String, bool> _probeCache = {};
 
   Future<VideoDownloadInfo> fetch(String urlOrId) async {
     final parsed = VideoId.parseVideoId(urlOrId);
@@ -52,12 +53,9 @@ class YoutubeDatasource {
       ...manifest.hls.whereType<HlsAudioStreamInfo>().map(
           (s) => _toOption(s, id, StreamCategory.audio)),
     ];
-    final videoOnly = <StreamOption>[
-      ...manifest.videoOnly.map(
-          (s) => _toOption(s, id, StreamCategory.videoOnly)),
-      ...manifest.hls.whereType<HlsVideoStreamInfo>().map(
-          (s) => _toOption(s, id, StreamCategory.videoOnly)),
-    ];
+
+    // Only keep formats that are actually downloadable from this network.
+    final verified = await _verifyStreams([...muxed, ...audio]);
 
     final info = VideoDownloadInfo(
       videoId: id,
@@ -66,13 +64,51 @@ class YoutubeDatasource {
       thumbnailUrl: meta.$3,
       duration: meta.$4,
       streams: [
-        ..._sortedTrim(muxed, 4),
-        ..._sortedTrim(audio, 4),
-        ..._sortedTrim(videoOnly, 4),
+        ..._sortedTrim(
+            verified.where((o) => o.category == StreamCategory.muxed), 4),
+        ..._sortedTrim(
+            verified.where((o) => o.category == StreamCategory.audio), 4),
       ],
     );
     _infoCache[id] = info;
     return info;
+  }
+
+  /// Probes each candidate with a tiny range request and returns only the
+  /// streams that respond successfully (200/206). If everything fails
+  /// (e.g. probes themselves got blocked) all candidates are kept.
+  Future<List<StreamOption>> _verifyStreams(
+    List<StreamOption> options,
+  ) async {
+    final results = await Future.wait(options.map((o) async {
+      final key = '${o.videoId}:${o.tag}';
+      final cached = _probeCache[key];
+      final ok = cached ?? await _probe(o);
+      _probeCache[key] = ok;
+      return (option: o, ok: ok);
+    }));
+    final kept = results.where((r) => r.ok).map((r) => r.option).toList();
+    return kept.isEmpty ? options : kept;
+  }
+
+  Future<bool> _probe(StreamOption option) async {
+    if (option.url.isEmpty) return true;
+    try {
+      final res = await _dio.get<List<int>>(
+        option.url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: const {'Range': 'bytes=0-511'},
+          sendTimeout: const Duration(seconds: 8),
+          receiveTimeout: const Duration(seconds: 8),
+        ),
+      );
+      return res.statusCode != null &&
+          res.statusCode! >= 200 &&
+          res.statusCode! < 400;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<Video?> _tryGetVideo(String id) async {
@@ -179,7 +215,7 @@ class YoutubeDatasource {
       label: label,
       container: s.container.name,
       sizeBytes: s.size.totalBytes > 0 ? s.size.totalBytes : null,
-      url: fragments ? '' : s.url.toString(),
+      url: s.url.toString(),
       isFragmentBased: fragments,
     );
   }

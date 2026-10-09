@@ -20,7 +20,7 @@ class DownloadProgressPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percent = progress == null
+    final percentLabel = progress == null
         ? '—'
         : '${(progress!.clamp(0, 1) * 100).toStringAsFixed(0)}%';
     return Container(
@@ -40,7 +40,7 @@ class DownloadProgressPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Text('Downloading…', style: AppTextStyles.sectionTitle),
               const Spacer(),
-              Text('$percent%', style: AppTextStyles.sectionTitle),
+              Text(percentLabel, style: AppTextStyles.sectionTitle),
             ],
           ),
           const SizedBox(height: 12),

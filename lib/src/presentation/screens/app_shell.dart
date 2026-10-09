@@ -22,7 +22,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   final PlayerController _player = PlayerController();
   late final LibraryModel _library;
   int _tab = 0;
@@ -30,6 +30,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _library = LibraryModel(
       widget.libraryRepository ?? LibraryRepositoryImpl(),
     );
@@ -38,9 +39,20 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _player.dispose();
     _library.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Honor the "Background play" toggle: pause when leaving the app if it
+    // is turned off; otherwise keep playing (Dynamic Island keeps controls).
+    if (state == AppLifecycleState.paused &&
+        !_player.backgroundPlayEnabled) {
+      _player.pause();
+    }
   }
 
   void _openPlayer() {

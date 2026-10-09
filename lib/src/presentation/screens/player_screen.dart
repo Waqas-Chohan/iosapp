@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../components/app_colors.dart';
@@ -193,6 +194,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               const TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ),
+                      TextButton.icon(
+                        onPressed: widget.player.toggleBackgroundPlay,
+                        icon: Icon(
+                          widget.player.backgroundPlayEnabled
+                              ? Icons.headset
+                              : Icons.headset_off,
+                          color: widget.player.backgroundPlayEnabled
+                              ? AppColors.accentOrange
+                              : Colors.white38,
+                          size: 22,
+                        ),
+                        label: Text(
+                          widget.player.backgroundPlayEnabled
+                              ? 'Background on'
+                              : 'Background off',
+                          style: TextStyle(
+                            color: widget.player.backgroundPlayEnabled
+                                ? Colors.white70
+                                : Colors.white38,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -219,7 +243,82 @@ class _VideoSurface extends StatelessWidget {
     final aspect = vc.value.aspectRatio > 0 ? vc.value.aspectRatio : 16 / 9;
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: AspectRatio(aspectRatio: aspect, child: VideoPlayer(vc)),
+      child: Stack(
+        alignment: Alignment.topRight,
+        children: [
+          AspectRatio(aspectRatio: aspect, child: VideoPlayer(vc)),
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                onPressed: () => _openFullscreen(context, vc),
+                tooltip: 'Fullscreen',
+                icon: const Icon(Icons.fullscreen, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _openFullscreen(
+  BuildContext context,
+  VideoPlayerController vc,
+) async {
+  SystemChrome.setPreferredOrientations(const [
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => _FullscreenPage(videoController: vc),
+    ),
+  );
+  if (context.mounted) {
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+  }
+}
+
+class _FullscreenPage extends StatefulWidget {
+  const _FullscreenPage({required this.videoController});
+
+  final VideoPlayerController videoController;
+
+  @override
+  State<_FullscreenPage> createState() => _FullscreenPageState();
+}
+
+class _FullscreenPageState extends State<_FullscreenPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: widget.videoController.value.aspectRatio,
+              child: VideoPlayer(widget.videoController),
+            ),
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.fullscreen_exit, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

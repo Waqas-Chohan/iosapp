@@ -22,8 +22,17 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   Timer? _timer;
+  late final AnimationController _animation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..forward();
+  late final Animation<double> _fade =
+      CurvedAnimation(parent: _animation, curve: Curves.easeOut);
+  late final Animation<double> _scale = Tween<double>(begin: 0.85, end: 1)
+      .animate(CurvedAnimation(parent: _animation, curve: Curves.easeOutBack));
 
   @override
   void initState() {
@@ -34,6 +43,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _animation.dispose();
     super.dispose();
   }
 
@@ -57,11 +67,17 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
         ),
         child: Center(
-          child: Image.asset(
-            'assets/images/logo.png',
-            width: 135.4,
-            height: 120,
-            fit: BoxFit.contain,
+          child: FadeTransition(
+            opacity: _fade,
+            child: ScaleTransition(
+              scale: _scale,
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 135.4,
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+            ),
           ),
         ),
       ),
