@@ -30,6 +30,27 @@ class LibraryItem {
 
   bool get isVideo => category == StreamCategory.muxed;
 
+  /// Added from Photos / Files instead of downloaded from YouTube.
+  bool get isImported => videoId.startsWith('import_');
+
+  Duration? get duration =>
+      durationSeconds == null ? null : Duration(seconds: durationSeconds!);
+
+  LibraryItem copyWith({String? filePath, String? thumbnailPath}) =>
+      LibraryItem(
+        id: id,
+        videoId: videoId,
+        title: title,
+        author: author,
+        filePath: filePath ?? this.filePath,
+        category: category,
+        qualityLabel: qualityLabel,
+        container: container,
+        thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+        createdAt: createdAt,
+        durationSeconds: durationSeconds,
+      );
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'videoId': videoId,

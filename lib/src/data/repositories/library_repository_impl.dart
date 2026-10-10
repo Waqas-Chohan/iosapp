@@ -19,10 +19,23 @@ class LibraryRepositoryImpl implements LibraryRepository {
     try {
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is! List) return [];
-      return decoded
+      final items = decoded
           .whereType<Map<String, dynamic>>()
           .map(LibraryItem.fromJson)
           .toList();
+      // Re-anchor paths if iOS moved the app container (app update).
+      var changed = false;
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i];
+        final file = await _storage.rebase(item.filePath);
+        final thumb = await _storage.rebase(item.thumbnailPath);
+        if (file != item.filePath || thumb != item.thumbnailPath) {
+          items[i] = item.copyWith(filePath: file, thumbnailPath: thumb);
+          changed = true;
+        }
+      }
+      if (changed) await _write(items);
+      return items;
     } catch (_) {
       return [];
     }

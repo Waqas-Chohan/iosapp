@@ -3,15 +3,30 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../data/datasources/youtube_search_datasource.dart';
+import '../../domain/entities/download_task.dart';
+import '../../domain/entities/library_item.dart';
+import '../app_services.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
+import '../components/download_options_sheet.dart';
+import '../components/ui_kit.dart';
+import 'downloads_screen.dart';
 
-/// Search YouTube inside the app. Tapping a result returns it to the caller
-/// (the Home screen then fetches its formats for download).
+/// Search YouTube inside the app. Every result has a download button that
+/// opens the quality picker; the chosen format goes to the Downloads queue.
 class YoutubeSearchScreen extends StatefulWidget {
-  const YoutubeSearchScreen({super.key, this.initialQuery = ''});
+  const YoutubeSearchScreen({
+    super.key,
+    required this.services,
+    this.initialQuery = '',
+    this.embedded = false,
+  });
 
+  final AppServices services;
   final String initialQuery;
+
+  /// Shown as a tab (no back button, no autofocus).
+  final bool embedded;
 
   @override
   State<YoutubeSearchScreen> createState() => _YoutubeSearchScreenState();
@@ -113,9 +128,11 @@ class _YoutubeSearchScreenState extends State<YoutubeSearchScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         foregroundColor: AppColors.splashNavy,
-        titleSpacing: 0,
+        automaticallyImplyLeading: !widget.embedded,
+        titleSpacing: widget.embedded ? 16 : 0,
         title: Container(
           margin: const EdgeInsets.only(right: 12),
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -130,7 +147,7 @@ class _YoutubeSearchScreenState extends State<YoutubeSearchScreen> {
               Expanded(
                 child: TextField(
                   controller: _query,
-                  autofocus: widget.initialQuery.isEmpty,
+                  autofocus: !widget.embedded && widget.initialQuery.isEmpty,
                   textInputAction: TextInputAction.search,
                   onChanged: _onChanged,
                   onSubmitted: _search,
@@ -149,6 +166,7 @@ class _YoutubeSearchScreenState extends State<YoutubeSearchScreen> {
                     _query.clear();
                     _suggestions = const [];
                     _showSuggestions = false;
+                    _results = const [];
                   }),
                 ),
             ],
@@ -190,39 +208,106 @@ class _YoutubeSearchScreenState extends State<YoutubeSearchScreen> {
       return _Empty(icon: Icons.wifi_off, text: _error!);
     }
     if (_results.isEmpty) {
-      return const _Empty(
-        icon: Icons.travel_explore,
-        text: 'Search YouTube and tap a result to download it.',
+      return ListView(
+        children: [
+          const SizedBox(height: 40),
+          const EmptyState(
+            icon: Icons.travel_explore_rounded,
+            title: 'Find any song or video',
+            message: 'Search YouTube, tap the download button and pick a '
+                'quality — up to 1080p video or high-quality audio.',
+          ),
+          ..._localMatches(),
+        ],
       );
     }
-    return ListView.separated(
-      controller: _scroll,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-      itemCount: _results.length + (_loadingMore ? 1 : 0),
-      separatorBuilder: (_, _) => const SizedBox(height: 14),
-      itemBuilder: (context, i) {
-        if (i >= _results.length) {
-          return const Padding(
-            padding: EdgeInsets.all(12),
-            child: Center(
-              child: CircularProgressIndicator(color: AppColors.accentOrange),
-            ),
-          );
-        }
-        final hit = _results[i];
-        return _ResultTile(
-          hit: hit,
-          onTap: () => Navigator.of(context).pop(hit),
+    return ListenableBuilder(
+      listenable: widget.services.downloads,
+      builder: (context, _) {
+        final local = _localMatches();
+        final offset = local.length;
+        return ListView.builder(
+          controller: _scroll,
+          padding: const EdgeInsets.only(bottom: 24),
+          itemCount: offset + _results.length + (_loadingMore ? 1 : 0),
+          itemBuilder: (context, i) {
+            if (i < offset) return local[i];
+            final r = i - offset;
+            if (r >= _results.length) {
+              return const Padding(
+                padding: EdgeInsets.all(12),
+                child: Center(
+                  child:
+                      CircularProgressIndicator(color: AppColors.accentOrange),
+                ),
+              );
+            }
+            final hit = _results[r];
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 7, 8, 7),
+              child: _ResultTile(
+                hit: hit,
+                task: widget.services.downloads.latestFor(hit.videoId),
+                onTap: () => _download(hit),
+              ),
+            );
+          },
         );
       },
+    );
+  }
+
+  /// "In your library" matches for the current query (max 3).
+  List<Widget> _localMatches() {
+    final q = _query.text.trim().toLowerCase();
+    if (q.length < 2) return const [];
+    final items = widget.services.library.items;
+    final matches = <LibraryItem>[
+      for (final i in items)
+        if ('${i.title} ${i.author}'.toLowerCase().contains(q)) i,
+    ].take(3).toList();
+    if (matches.isEmpty) return const [];
+    return [
+      const SectionHeader(title: 'In your library'),
+      for (final m in matches)
+        TrackTile(
+          item: m,
+          onTap: () => widget.services.playAndOpen(
+            context,
+            matches,
+            index: matches.indexOf(m),
+          ),
+        ),
+      const SectionHeader(title: 'From YouTube'),
+    ];
+  }
+
+  Future<void> _download(SearchHit hit) async {
+    FocusScope.of(context).unfocus();
+    final task = await showDownloadOptions(
+      context,
+      downloads: widget.services.downloads,
+      videoId: hit.videoId,
+      title: hit.title,
+      author: hit.author,
+      thumbnailUrl: hit.thumbnailUrl,
+      duration: hit.duration,
+    );
+    if (task == null || !mounted) return;
+    Ui.snack(
+      context,
+      'Downloading ${task.option.label} · ${task.title}',
+      action: 'View',
+      onAction: () => openDownloads(context, widget.services),
     );
   }
 }
 
 class _ResultTile extends StatelessWidget {
-  const _ResultTile({required this.hit, required this.onTap});
+  const _ResultTile({required this.hit, required this.onTap, this.task});
 
   final SearchHit hit;
+  final DownloadTask? task;
   final VoidCallback onTap;
 
   @override
@@ -231,7 +316,6 @@ class _ResultTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
@@ -239,12 +323,12 @@ class _ResultTile extends StatelessWidget {
               children: [
                 Image.network(
                   hit.thumbnailUrl,
-                  width: 150,
-                  height: 84,
+                  width: 140,
+                  height: 79,
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) => Container(
-                    width: 150,
-                    height: 84,
+                    width: 140,
+                    height: 79,
                     color: AppColors.inputFill,
                     child: const Icon(Icons.music_note, color: AppColors.textGray),
                   ),
@@ -280,7 +364,7 @@ class _ResultTile extends StatelessWidget {
                   hit.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.optionTitle,
+                  style: AppTextStyles.optionTitle.copyWith(fontSize: 14),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -288,24 +372,12 @@ class _ResultTile extends StatelessWidget {
                       .join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.optionSubtitle,
-                ),
-                const SizedBox(height: 6),
-                const Row(
-                  children: [
-                    Icon(Icons.download_outlined, size: 16, color: AppColors.accentOrange),
-                    SizedBox(width: 4),
-                    Text('Tap to download',
-                        style: TextStyle(
-                          color: AppColors.accentOrange,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        )),
-                  ],
+                  style: AppTextStyles.optionSubtitle.copyWith(fontSize: 12),
                 ),
               ],
             ),
           ),
+          _DownloadButton(task: task, onTap: onTap),
         ],
       ),
     );
@@ -347,5 +419,56 @@ class _Empty extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Download / progress / done indicator for one search result.
+class _DownloadButton extends StatelessWidget {
+  const _DownloadButton({required this.task, required this.onTap});
+
+  final DownloadTask? task;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = task;
+    Widget icon;
+    String tip;
+    if (t == null || t.state == DownloadState.failed) {
+      icon = const Icon(Icons.download_for_offline_rounded,
+          color: AppColors.accentOrange, size: 32);
+      tip = 'Download';
+    } else if (t.isFinished) {
+      icon = const Icon(Icons.check_circle_rounded,
+          color: Color(0xFF2E9E5B), size: 30);
+      tip = 'Downloaded — tap for another quality';
+    } else {
+      icon = SizedBox(
+        width: 28,
+        height: 28,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            CircularProgressIndicator(
+              value: t.state == DownloadState.paused ? (t.progress ?? 0) : t.progress,
+              strokeWidth: 3,
+              color: t.state == DownloadState.paused
+                  ? AppColors.textGray
+                  : AppColors.accentOrange,
+              backgroundColor: AppColors.inputFill,
+            ),
+            Icon(
+              t.state == DownloadState.paused
+                  ? Icons.pause_rounded
+                  : Icons.arrow_downward_rounded,
+              size: 14,
+              color: AppColors.splashNavy,
+            ),
+          ],
+        ),
+      );
+      tip = 'Downloading';
+    }
+    return IconButton(onPressed: onTap, tooltip: tip, icon: icon);
   }
 }

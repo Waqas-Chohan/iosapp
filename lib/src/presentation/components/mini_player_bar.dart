@@ -23,7 +23,9 @@ class MiniPlayerBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
           child: Row(
             children: [
-              Artwork(thumbnailPath: player.current?.thumbnailPath ?? '', size: 44),
+              player.current == null
+                  ? const Artwork(thumbnailPath: '', size: 44)
+                  : Artwork.item(player.current!, size: 44),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

@@ -1,127 +1,36 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
 import 'package:gal/gal.dart';
 
 import '../../domain/entities/video_download_info.dart';
 import '../../domain/repositories/video_repository.dart';
-import '../datasources/local_storage_datasource.dart';
 import '../datasources/youtube_datasource.dart';
 
-/// Concrete [VideoRepository]: YoutubeExplode + dio + gal + path_provider.
+/// Concrete [VideoRepository]: YoutubeExplode + gal.
 class VideoRepositoryImpl implements VideoRepository {
   final YoutubeDatasource _youtube = YoutubeDatasource();
-  final LocalStorageDatasource _storage = LocalStorageDatasource();
-  final Dio _dio = Dio();
-  CancelToken? _cancelToken;
+
+  /// Album created in the Photos app for everything Musically saves.
+  static const photosAlbum = 'Musically';
 
   @override
   Future<VideoDownloadInfo> fetchVideoInfo(String urlOrId) =>
       _youtube.fetch(urlOrId);
 
   @override
-  Future<String> downloadToLocal(
-    StreamOption option,
-    DownloadProgressCallback? onProgress,
-  ) async {
-    _cancelToken?.cancel();
-    _cancelToken = CancelToken();
-
-    final dir = await _storage.downloadsDirectory();
-    final path = '${dir.path}/${_safeFileName(option)}';
-
-    if (option.isFragmentBased) {
-      await _downloadFragments(option, path, onProgress);
-    } else {
-      await _downloadDirect(option, path, onProgress);
-    }
-
-    if (!await File(path).exists()) {
-      throw Exception('Download failed: file was not saved.');
-    }
-    return path;
-  }
-
-  /// Direct URL download. YouTube's CDN requires a `Range` header
-  /// (plain requests return 403), so we send one and retry once with a
-  /// freshly-refreshed manifest URL on failure.
-  Future<void> _downloadDirect(
-    StreamOption option,
-    String path,
-    DownloadProgressCallback? onProgress,
-  ) async {
-    try {
-      await _dio.download(
-        option.url,
-        path,
-        options: Options(headers: const {'Range': 'bytes=0-'}),
-        onReceiveProgress: (received, total) {
-          if (total > 0) onProgress?.call(received, total);
-        },
-        cancelToken: _cancelToken,
-      );
-    } catch (e) {
-      final fresh = await _youtube.refreshStreamUrl(option.videoId, option.tag);
-      if (fresh == null || fresh.isEmpty) rethrow;
-      await _dio.download(
-        fresh,
-        path,
-        options: Options(headers: const {'Range': 'bytes=0-'}),
-        onReceiveProgress: (received, total) {
-          if (total > 0) onProgress?.call(received, total);
-        },
-        cancelToken: _cancelToken,
-      );
-    }
-  }
-
-  Future<void> _downloadFragments(
-    StreamOption option,
-    String path,
-    DownloadProgressCallback? onProgress,
-  ) async {
-    final expected = option.sizeBytes ?? 0;
-    var received = 0;
-    final sink = File(path).openWrite();
-
-    try {
-      await for (final chunk in _youtube.streamFor(option.videoId, option.tag)) {
-        if (_cancelToken!.isCancelled) {
-          throw DioException.requestCancelled(
-            requestOptions: RequestOptions(path: path),
-            reason: 'Download cancelled',
-          );
-        }
-        sink.add(chunk);
-        received += chunk.length;
-        if (expected > 0) onProgress?.call(received, expected);
-      }
-      await sink.flush();
-    } finally {
-      await sink.close();
-    }
-  }
-
-  @override
-  void cancelDownload() => _cancelToken?.cancel();
+  Future<String?> refreshStreamUrl(String videoId, int tag) =>
+      _youtube.refreshStreamUrl(videoId, tag);
 
   @override
   Future<void> saveVideoToGallery(String filePath) async {
-    if (!await Gal.hasAccess()) {
-      final granted = await Gal.requestAccess();
+    if (!await Gal.hasAccess(toAlbum: true)) {
+      final granted = await Gal.requestAccess(toAlbum: true);
       if (!granted) {
-        throw Exception('Photo library access was denied.');
+        throw Exception('Photo library access was denied. '
+            'Allow it in Settings › Musically › Photos.');
       }
     }
-    await Gal.putVideo(filePath);
+    await Gal.putVideo(filePath, album: photosAlbum);
   }
 
   @override
   void close() => _youtube.close();
-
-  String _safeFileName(StreamOption option) {
-    final ext = option.extensionName.isEmpty ? 'mp4' : option.extensionName;
-    return 'video_${DateTime.now().millisecondsSinceEpoch}.$ext';
-  }
 }
-
