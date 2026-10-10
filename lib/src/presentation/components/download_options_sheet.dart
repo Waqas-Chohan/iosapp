@@ -154,7 +154,7 @@ class _DownloadOptionsSheetState extends State<_DownloadOptionsSheet> {
               children.add(const _SectionLabel(
                 icon: Icons.movie_outlined,
                 text: 'Video',
-                note: 'Saved to Photos › Musically and your Library',
+                note: 'Saved to Photos › Muz and your Library',
               ));
               for (final o in video) {
                 children.add(_OptionTile(

@@ -78,8 +78,8 @@ class GlassNavBar extends StatelessWidget {
             decoration: BoxDecoration(
               // Subtle tint over the blur; no solid color behind it.
               color: dark
-                  ? Colors.black.withValues(alpha: 0.15)
-                  : Colors.white.withValues(alpha: 0.08),
+                  ? Colors.black.withValues(alpha: 0.10)
+                  : Colors.white.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(30),
               border: Border(
                 // 1px glass-edge catchlight along the top.
@@ -193,19 +193,17 @@ class _GlassTab extends StatelessWidget {
       shadows: reflection,
     );
 
-    return Semantics(
-      selected: selected,
-      button: true,
-      label: item.label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onTap(item.index),
-        child: SizedBox(
-          height: GlassNavBar._barHeight,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
+      return Semantics(
+        selected: selected,
+        button: true,
+        label: item.label,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onTap(item.index),
+          child: SizedBox(
+            height: GlassNavBar._barHeight,
+            child: Center(
+              child: SizedBox(
                 height: GlassNavBar._capsuleHeight,
                 child: Center(
                   child: AnimatedScale(
@@ -222,23 +220,10 @@ class _GlassTab extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  height: 1.1,
-                  color: selected ? active : inactive,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

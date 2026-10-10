@@ -74,15 +74,14 @@ class Artwork extends StatelessWidget {
         errorBuilder: (_, _, _) => fallback,
       );
     } else if (thumbnailPath.startsWith('http')) {
-      image = Image.network(
-        thumbnailPath,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => fallback,
+      image = _RetryableThumbnail(
+        url: thumbnailPath,
+        fallback: fallback,
       );
     } else {
       image = fallback;
     }
-    if (zoom != 1.0 && image is Image) {
+    if (zoom != 1.0 && image is! _IconFallback) {
       image = Transform.scale(scale: zoom, child: image);
     }
 
@@ -94,6 +93,48 @@ class Artwork extends StatelessWidget {
         child: image,
       ),
     );
+  }
+}
+
+/// Network artwork that keeps banners HD: when YouTube has no 1280x720
+/// `maxresdefault` for a video (404), it transparently retries the
+/// always-available `hqdefault` before giving up.
+class _RetryableThumbnail extends StatefulWidget {
+  const _RetryableThumbnail({required this.url, required this.fallback});
+
+  final String url;
+  final Widget fallback;
+
+  /// Swap the HD variant for the standard one.
+  static String _downgrade(String url) =>
+      url.replaceAll('maxresdefault.jpg', 'hqdefault.jpg');
+
+  @override
+  State<_RetryableThumbnail> createState() => _RetryableThumbnailState();
+}
+
+class _RetryableThumbnailState extends State<_RetryableThumbnail> {
+  late String _url = widget.url;
+  bool _triedFallback = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget image = Image.network(
+      _url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) {
+        final downgraded = _RetryableThumbnail._downgrade(_url);
+        if (!_triedFallback && downgraded != _url) {
+          _triedFallback = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _url = downgraded);
+          });
+          return const SizedBox.shrink();
+        }
+        return widget.fallback;
+      },
+    );
+    return image;
   }
 }
 

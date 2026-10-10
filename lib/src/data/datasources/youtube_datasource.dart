@@ -42,7 +42,8 @@ class YoutubeDatasource {
         ? (
             video.title,
             video.author,
-            video.thumbnails.highResUrl,
+            // 1280x720 artwork — sharp banners regardless of stream quality.
+            video.thumbnails.maxResUrl,
             video.duration,
           )
         : await _oembedMetadata(id);
@@ -227,10 +228,13 @@ class YoutubeDatasource {
           '&format=json';
       final res = await _dio.get<Map<String, dynamic>>(url);
       final data = res.data;
+      // oEmbed serves a 480x360 thumb; ask for the HD variant instead.
+      final thumb = ((data?['thumbnail_url'] as String?) ?? '')
+          .replaceAll('hqdefault.jpg', 'maxresdefault.jpg');
       return (
         (data?['title'] as String?) ?? id,
         (data?['author_name'] as String?) ?? 'Unknown',
-        (data?['thumbnail_url'] as String?) ?? '',
+        thumb,
         null,
       );
     } catch (_) {

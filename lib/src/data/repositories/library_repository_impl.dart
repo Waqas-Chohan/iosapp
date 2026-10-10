@@ -60,18 +60,37 @@ class LibraryRepositoryImpl implements LibraryRepository {
     if (url.isEmpty) return '';
     final dir = await _storage.thumbnailsDirectory();
     final file = File('${dir.path}/$videoId.jpg');
-    if (await file.exists()) return file.path;
-    try {
-      final res = await _dio.get<List<int>>(
-        url,
-        options: Options(responseType: ResponseType.bytes),
-      );
-      await file.writeAsBytes(res.data ?? const [], flush: true);
-      return (await file.exists()) ? file.path : url;
-    } catch (_) {
-      return url; // Fall back to the network URL.
+    // HD artwork is ~60KB+; a small existing thumb is a legacy low-res one —
+    // re-fetch it in HD so banners stay sharp.
+    if (await file.exists()) {
+      final len = await file.length();
+      if (len > _hdThumbnailBytes) return file.path;
     }
+    // Try the HD variant first, fall back to whatever was requested.
+    final candidates = <String>{
+      url.replaceAll('hqdefault.jpg', 'maxresdefault.jpg'),
+      url,
+    }.toList();
+    for (final candidate in candidates) {
+      try {
+        final res = await _dio.get<List<int>>(
+          candidate,
+          options: Options(responseType: ResponseType.bytes),
+        );
+        final bytes = res.data ?? const <int>[];
+        if (res.statusCode == 200 && bytes.isNotEmpty) {
+          await file.writeAsBytes(bytes, flush: true);
+          return file.path;
+        }
+      } catch (_) {
+        // Try the next candidate.
+      }
+    }
+    return url; // Fall back to the network URL.
   }
+
+  /// A `maxresdefault` JPEG is comfortably above this; `hqdefault` is below.
+  static const int _hdThumbnailBytes = 48 * 1024;
 
   Future<void> _write(List<LibraryItem> items) async {
     final file = await _storage.libraryRegistryFile();

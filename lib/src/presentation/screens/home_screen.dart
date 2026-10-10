@@ -271,14 +271,14 @@ class _Header extends StatelessWidget {
                   // Splash-screen logo, used as the brand mark on Home too.
                   Image.asset(
                     'assets/images/logo.png',
-                    width: 40,
-                    height: 40,
+                    width: 34,
+                    height: 34,
                     fit: BoxFit.contain,
                   ),
                   const SizedBox(width: 10),
                   const Expanded(
                     child: Text(
-                      'Musically',
+                      'Muz',
                       style: TextStyle(
                         fontFamily: 'Sora',
                         fontWeight: FontWeight.w700,

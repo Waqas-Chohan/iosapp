@@ -8,8 +8,8 @@ import '../datasources/youtube_datasource.dart';
 class VideoRepositoryImpl implements VideoRepository {
   final YoutubeDatasource _youtube = YoutubeDatasource();
 
-  /// Album created in the Photos app for everything Musically saves.
-  static const photosAlbum = 'Musically';
+  /// Album created in the Photos app for everything Muz saves.
+  static const photosAlbum = 'Muz';
 
   @override
   Future<VideoDownloadInfo> fetchVideoInfo(String urlOrId) =>

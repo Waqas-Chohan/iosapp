@@ -574,7 +574,7 @@ Future<void> showTrackActions(
     case 'photos':
       try {
         await services.downloads.saveFileToPhotos(item.filePath);
-        if (context.mounted) Ui.snack(context, 'Saved to Photos › Musically');
+        if (context.mounted) Ui.snack(context, 'Saved to Photos › Muz');
       } catch (e) {
         if (context.mounted) Ui.snack(context, 'Could not save: $e');
       }

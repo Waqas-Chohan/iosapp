@@ -81,7 +81,7 @@ class _PersonalizeScreenState extends State<PersonalizeScreen> {
               children: [
                 _ThemeCard(
                   title: 'Default Theme',
-                  subtitle: 'Musically orange · navy',
+                  subtitle: 'Muz orange · navy',
                   color: ThemeController.defaultSeed,
                   selected: !_theme.isCustomActive,
                   onTap: () {

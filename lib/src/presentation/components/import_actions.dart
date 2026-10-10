@@ -29,7 +29,7 @@ Future<void> importMedia(BuildContext context, AppServices services) async {
             const Padding(
               padding: EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Text(
-                'Copies are stored in Musically, the originals stay put.',
+                'Copies are stored in Muz, the originals stay put.',
                 style: AppTextStyles.optionSubtitle,
               ),
             ),

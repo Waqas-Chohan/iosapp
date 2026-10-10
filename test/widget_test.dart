@@ -73,7 +73,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
 
       expect(find.text('Welcome Back!'), findsNothing); // login skipped
-      expect(find.text('Musically'), findsOneWidget);
+      expect(find.text('Muz'), findsOneWidget);
       expect(find.byKey(const Key('home-search')), findsOneWidget);
     });
 
@@ -89,7 +89,7 @@ void main() {
       await tester.pump(); // start the route transition
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.text('Musically'), findsOneWidget);
+      expect(find.text('Muz'), findsOneWidget);
       expect(find.byKey(const Key('home-search')), findsOneWidget);
       expect(find.text('Fetch Video'), findsNothing);
     });

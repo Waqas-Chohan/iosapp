@@ -59,7 +59,7 @@ class YoutubeSearchDatasource {
             videoId: v.id.value,
             title: v.title,
             author: v.author,
-            thumbnailUrl: v.thumbnails.mediumResUrl,
+            thumbnailUrl: v.thumbnails.maxResUrl,
             duration: v.duration,
             viewCount: v.engagement.viewCount,
             isLive: v.isLive,

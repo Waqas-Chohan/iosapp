@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Musically</string>
+	<string>Muz</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -31,9 +31,9 @@
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Musically saves downloaded videos to the Musically album in your Photos.</string>
+	<string>Muz saves downloaded videos to the Muz album in your Photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Musically needs photo library access to save downloaded videos into its Musically album.</string>
+	<string>Muz needs photo library access to save downloaded videos into its Muz album.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

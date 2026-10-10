@@ -30,7 +30,7 @@ class _MyAppState extends State<MyApp> {
       child: ListenableBuilder(
         listenable: _theme,
         builder: (context, _) => MaterialApp(
-          title: 'Musically',
+          title: 'Muz',
           debugShowCheckedModeBanner: false,
           theme: _theme.activeTheme,
           home: const SplashScreen(),
