@@ -21,6 +21,6 @@ jobs:
           set +e
           flutter analyze > analyze.txt 2>&1; a=$?
           flutter test --reporter expanded > test.txt 2>&1; t=$?
-          { echo "analyze=$a test=$t"; echo '```'; tail -c 30000 analyze.txt; echo '```'; echo '```'; grep -v "^\s*$" test.txt | grep -E -A25 "FAILED|EXCEPTION|Error|Expected|══" | head -300; tail -5 test.txt; echo '```'; } > report.md
+          { echo "analyze=$a test=$t"; echo '```'; tail -c 30000 analyze.txt; echo '```'; echo '```'; grep -v "^\s*$" test.txt | grep -v "^00:0" | head -150; tail -4 test.txt; echo '```'; } > report.md
           gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@report.md > /dev/null
           [ $a -eq 0 ] && [ $t -eq 0 ]

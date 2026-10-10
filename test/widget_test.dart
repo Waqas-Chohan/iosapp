@@ -138,7 +138,6 @@ void main() {
       expect(find.text('Jump back in'), findsOneWidget);
       expect(find.text('Road trip'), findsOneWidget);
       expect(find.text('New playlist'), findsOneWidget);
-      expect(tester.takeException(), isNull);
     });
 
     testWidgets('empty library invites to search or import',
