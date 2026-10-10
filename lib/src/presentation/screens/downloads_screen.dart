@@ -7,6 +7,7 @@ import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/artwork.dart';
 import '../components/collection_sheets.dart';
+import '../components/glass_menu.dart';
 import '../components/format.dart';
 import '../components/ui_kit.dart';
 
@@ -46,10 +47,45 @@ class DownloadsScreen extends StatelessWidget {
               final canPause = downloads.tasks.any((t) => t.canPause);
               final canResume = downloads.tasks
                   .any((t) => t.state == DownloadState.paused);
-              return PopupMenuButton<String>(
+              return IconButton(
+                tooltip: 'More',
                 icon: const Icon(Icons.more_horiz_rounded),
-                onSelected: (v) {
-                  switch (v) {
+                onPressed: () async {
+                  final value = await showGlassMenu(
+                    context,
+                    title: 'Downloads options',
+                    actions: [
+                      GlassMenuAction(
+                        value: 'pause',
+                        label: 'Pause all',
+                        icon: Icons.pause_circle_outline_rounded,
+                        color: AppColors.accentOrange,
+                        enabled: canPause,
+                      ),
+                      GlassMenuAction(
+                        value: 'resume',
+                        label: 'Resume all',
+                        icon: Icons.play_circle_outline_rounded,
+                        color: AppColors.splashBlue,
+                        enabled: canResume,
+                      ),
+                      GlassMenuAction(
+                        value: 'clear',
+                        label: 'Clear finished',
+                        icon: Icons.delete_sweep_outlined,
+                        color: AppColors.errorRed,
+                        enabled: downloads.finished.isNotEmpty,
+                      ),
+                      GlassMenuAction(
+                        value: 'photos',
+                        label: 'Open Photos app',
+                        icon: Icons.photo_library_outlined,
+                        color: Color(0xFF2E9E5B),
+                      ),
+                    ],
+                  );
+                  if (value == null) return;
+                  switch (value) {
                     case 'pause':
                       downloads.pauseAll();
                     case 'resume':
@@ -60,27 +96,6 @@ class DownloadsScreen extends StatelessWidget {
                       Gal.open();
                   }
                 },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'pause',
-                    enabled: canPause,
-                    child: const Text('Pause all'),
-                  ),
-                  PopupMenuItem(
-                    value: 'resume',
-                    enabled: canResume,
-                    child: const Text('Resume all'),
-                  ),
-                  PopupMenuItem(
-                    value: 'clear',
-                    enabled: downloads.finished.isNotEmpty,
-                    child: const Text('Clear finished'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'photos',
-                    child: Text('Open Photos app'),
-                  ),
-                ],
               );
             },
           ),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../domain/entities/library_collection.dart';
 import '../../domain/entities/library_item.dart';
@@ -6,9 +6,11 @@ import '../app_services.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/collection_sheets.dart';
+import '../components/glass_menu.dart';
 import '../controllers/library_ai_service.dart';
 import '../components/import_actions.dart';
 import '../components/ui_kit.dart';
+import 'mood_sheets.dart';
 import 'playlist_screen.dart';
 
 enum _Filter { all, playlists, albums, songs, videos }
@@ -50,6 +52,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
     if (c == null || !mounted) return;
     openPlaylist(context, s, c.id, promptAdd: true);
+  }
+
+  /// Routes a glass-menu selection to the same actions as before.
+  Future<void> _handleMenu(String value) async {
+    switch (value) {
+      case 'import':
+        await importMedia(context, s);
+      case 'artists':
+        if (mounted) setState(() => _selectedArtist = null);
+      case 'recommendations':
+        if (mounted) setState(() => _filter = _Filter.all);
+      case 'mood':
+        if (!mounted) return;
+        final mood = await showMoodPicker(context, s);
+        if (mood == null || !mounted) return;
+        await showMoodResults(context, s, mood);
+      case 'report':
+        if (!mounted) return;
+        final report = await s.ai.weeklyReport(s.library.items);
+        if (!mounted) return;
+        _showReportSheet(report);
+    }
   }
 
   List<LibraryItem> _sorted(List<LibraryItem> items) {
@@ -129,43 +153,49 @@ class _LibraryScreenState extends State<LibraryScreen> {
             icon: const Icon(Icons.add_rounded, size: 28),
             onPressed: _createCollection,
           ),
-          PopupMenuButton<String>(
+          IconButton(
             tooltip: 'More',
-            onSelected: (value) async {
-              switch (value) {
-                case 'import':
-                  await importMedia(context, s);
-                  return;
-                case 'artists':
-                  if (mounted) setState(() => _selectedArtist = null);
-                  return;
-                case 'recommendations':
-                  if (mounted) setState(() => _filter = _Filter.all);
-                  return;
-                case 'mood':
-                  if (!mounted) return;
-                  final playlist = await s.ai.moodPlaylist(
-                    library: s.library.items,
-                    mood: 'evening drive',
-                  );
-                  if (!mounted || playlist.items.isEmpty) return;
-                  _showPlaylistSheet(playlist.title, playlist.summary, playlist.items);
-                  return;
-                case 'report':
-                  if (!mounted) return;
-                  final report = await s.ai.weeklyReport(s.library.items);
-                  if (!mounted) return;
-                  _showReportSheet(report);
-                  return;
-              }
+            icon: const Icon(Icons.more_horiz_rounded),
+            onPressed: () async {
+              final value = await showGlassMenu(
+                context,
+                title: 'Library options',
+                actions: const [
+                  GlassMenuAction(
+                    value: 'import',
+                    label: 'Import videos',
+                    icon: Icons.add_photo_alternate_outlined,
+                    color: AppColors.splashBlue,
+                  ),
+                  GlassMenuAction(
+                    value: 'artists',
+                    label: 'Browse by artist',
+                    icon: Icons.person_search_rounded,
+                    color: AppColors.splashNavy,
+                  ),
+                  GlassMenuAction(
+                    value: 'recommendations',
+                    label: 'Recommendations',
+                    icon: Icons.auto_awesome_rounded,
+                    color: AppColors.accentOrange,
+                  ),
+                  GlassMenuAction(
+                    value: 'mood',
+                    label: 'Mood playlist',
+                    icon: Icons.music_note_rounded,
+                    color: Color(0xFF2E9E8F),
+                  ),
+                  GlassMenuAction(
+                    value: 'report',
+                    label: 'Weekly report',
+                    icon: Icons.insights_rounded,
+                    color: Color(0xFF4C6FFF),
+                  ),
+                ],
+              );
+              if (value == null || !mounted) return;
+              await _handleMenu(value);
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'import', child: Text('Import videos')),
-              PopupMenuItem(value: 'artists', child: Text('Artists')),
-              PopupMenuItem(value: 'recommendations', child: Text('Recommendations')),
-              PopupMenuItem(value: 'mood', child: Text('Mood playlist')),
-              PopupMenuItem(value: 'report', child: Text('Weekly report')),
-            ],
           ),
         ],
       ),
@@ -546,24 +576,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return _sorted(all.where((item) => item.author == artist && !item.isVideo).toList());
   }
 
-  void _showPlaylistSheet(String title, String summary, List<LibraryItem> items) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      builder: (_) => _InfoSheet(
-        title: title,
-        summary: summary,
-        items: items,
-        onPlay: () => s.playAndOpen(context, items),
-      ),
-    );
-  }
-
   void _showReportSheet(WeeklyListeningReport report) {
     showModalBottomSheet<void>(
       context: context,
@@ -615,92 +627,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _InfoSheet extends StatelessWidget {
-  const _InfoSheet({
-    required this.title,
-    required this.summary,
-    required this.items,
-    required this.onPlay,
-  });
-
-  final String title;
-  final String summary;
-  final List<LibraryItem> items;
-  final VoidCallback onPlay;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
-      shrinkWrap: true,
-      children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(0, 12, 0, 20),
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.splashNavy, AppColors.accentOrange],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
-          ),
-          child: Column(
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
-                child: Text(
-                  title,
-                  style: AppTextStyles.sectionTitle.copyWith(color: Colors.white),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              if (summary.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(Ui.gutter, 8, Ui.gutter, 0),
-                  child: Text(
-                    summary,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.optionSubtitle.copyWith(color: Colors.white70),
-                  ),
-                ),
-              const SizedBox(height: 18),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
-                child: PillButton(
-                  label: 'Play all',
-                  icon: Icons.play_arrow_rounded,
-                  onPressed: onPlay,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(Ui.gutter, 18, Ui.gutter, 0),
-          child: Text(
-            'Included tracks',
-            style: AppTextStyles.sectionTitle,
-          ),
-        ),
-        const SizedBox(height: 8),
-        for (final item in items)
-          TrackTile(item: item),
-      ],
     );
   }
 }

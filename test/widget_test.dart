@@ -309,8 +309,12 @@ void main() {
       expect(find.text('2 songs'), findsOneWidget);
 
       // Favorite "Artist a" via its heart button.
+      final tile = find.ancestor(
+        of: find.text('Artist a'),
+        matching: find.byType(InkWell),
+      );
       final heart = find.descendant(
-        of: find.widgetWithText(ListTile, 'Artist a'),
+        of: tile,
         matching: find.byIcon(Icons.favorite_border_rounded),
       );
       expect(heart, findsOneWidget);

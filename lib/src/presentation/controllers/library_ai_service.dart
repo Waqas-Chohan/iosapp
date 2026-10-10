@@ -98,6 +98,12 @@ class LibraryAiService {
     );
   }
 
+  /// Synchronous, uncached local mood match — used by the mood results sheet
+  /// to show "From your library" instantly while YouTube results load.
+  List<LibraryItem> moodPlaylistSync(List<LibraryItem> library, String mood) {
+    return _localMoodPlaylist(library, player.recentlyPlayed, mood, 12);
+  }
+
   Future<WeeklyListeningReport> weeklyReport(List<LibraryItem> library) async {
     final recent = player.recentlyPlayed;
     final signature = _signature([...library, ...recent]);
