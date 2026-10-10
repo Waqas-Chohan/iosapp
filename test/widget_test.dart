@@ -60,15 +60,21 @@ void main() {
   });
 
   group('App flow', () {
-    testWidgets('splash navigates to login after delay',
+    testWidgets('splash goes directly to home (login skipped)',
         (WidgetTester tester) async {
       await tester.pumpWidget(const MyApp());
       expect(tester.takeException(), isNull);
       expect(find.byType(Image), findsOneWidget); // splash logo
 
-      await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
-      expect(find.text('Welcome Back!'), findsOneWidget);
+      // Logo fade/scale (1.1s) then the 2.5s navigation timer.
+      await tester.pump(const Duration(milliseconds: 1100));
+      await tester.pump(const Duration(milliseconds: 1600));
+      // Route transition to the app shell.
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(find.text('Welcome Back!'), findsNothing); // login skipped
+      expect(find.text('Musically'), findsOneWidget);
+      expect(find.byKey(const Key('home-search')), findsOneWidget);
     });
 
     testWidgets('login is pre-filled and opens the home screen',
