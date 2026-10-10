@@ -7,7 +7,15 @@ import 'src/presentation/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: '.env');
+
+  // Load optional environment config (e.g. API keys) from .env.
+  // The .env file is git-ignored (secret), so it is absent in cloud builds —
+  // load it best-effort so a missing file never crashes app startup.
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // No .env bundled (cloud build / secret not provided) — continue without it.
+  }
 
   // Lock screen / Dynamic Island "Now Playing" card and remote controls
   // (play, pause, next, previous, scrubbing) for the audio engine.
