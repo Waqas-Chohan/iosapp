@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../components/app_colors.dart';
-import 'login_screen.dart';
+import 'app_shell.dart';
 
 /// The app splash screen, reproduced from the GYM SAAS Figma design
 /// (section `Splash Screen` `2575:3422`, frame 390 x 844).
@@ -14,7 +14,8 @@ import 'login_screen.dart';
 /// - Centered logo group (135.4 x 120) filled with the accent orange
 ///   `#FE6E04` — rendered as a transparent PNG asset.
 ///
-/// Shows for ~2.5s, then replaces itself with the [LoginScreen].
+/// Shows for ~2.5s, then replaces itself with the app shell
+/// (login is currently commented out / skipped).
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -37,7 +38,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _timer = Timer(const Duration(milliseconds: 2500), _goToLogin);
+    _timer = Timer(const Duration(milliseconds: 2500), _goToHome);
   }
 
   @override
@@ -47,10 +48,10 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  void _goToLogin() {
+  void _goToHome() {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      MaterialPageRoute<void>(builder: (_) => const AppShell()),
     );
   }
 

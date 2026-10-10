@@ -12,6 +12,7 @@ import '../components/collection_sheets.dart';
 import '../components/format.dart';
 import '../components/import_actions.dart';
 import '../components/ui_kit.dart';
+import 'personalize_screen.dart';
 import 'playlist_screen.dart';
 import 'youtube_search_screen.dart';
 
@@ -262,15 +263,12 @@ class _Header extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: const BoxDecoration(
-                      gradient: Ui.accentGradient,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.graphic_eq_rounded,
-                        color: Colors.white, size: 22),
+                  // Splash-screen logo, used as the brand mark on Home too.
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 40,
+                    height: 40,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(width: 10),
                   const Expanded(
@@ -283,6 +281,16 @@ class _Header extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
+                  ),
+                  IconButton(
+                    tooltip: 'Personalize',
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PersonalizeScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.palette_outlined,
+                        color: Colors.white),
                   ),
                   IconButton(
                     tooltip: 'Import videos',

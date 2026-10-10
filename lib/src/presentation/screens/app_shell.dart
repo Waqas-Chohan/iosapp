@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../data/repositories/collections_repository_impl.dart';
@@ -137,41 +139,77 @@ class _AppShellState extends State<AppShell> {
             listenable: s.downloads,
             builder: (context, _) {
               final n = s.downloads.inProgressCount;
+              final primary = Theme.of(context).colorScheme.primary;
               Widget icon(int i, IconData on, IconData off) => Icon(
                     _tab == i ? on : off,
-                    color:
-                        _tab == i ? AppColors.splashNavy : AppColors.textGray,
+                    color: _tab == i ? primary : AppColors.textGray,
                   );
-              return NavigationBar(
-                backgroundColor: Colors.white,
-                indicatorColor: AppColors.accentOrange.withValues(alpha: 0.18),
-                selectedIndex: _tab,
-                onDestinationSelected: _goTo,
-                destinations: [
-                  NavigationDestination(
-                    icon: icon(0, Icons.home_rounded, Icons.home_outlined),
-                    label: 'Home',
-                  ),
-                  NavigationDestination(
-                    icon: icon(1, Icons.search_rounded, Icons.search_outlined),
-                    label: 'Search',
-                  ),
-                  NavigationDestination(
-                    icon: icon(2, Icons.library_music_rounded,
-                        Icons.library_music_outlined),
-                    label: 'Library',
-                  ),
-                  NavigationDestination(
-                    icon: Badge(
-                      isLabelVisible: n > 0,
-                      label: Text('$n'),
-                      backgroundColor: AppColors.accentOrange,
-                      child: icon(3, Icons.download_rounded,
-                          Icons.download_outlined),
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                          width: 1.2,
+                          color: Colors.white.withValues(alpha: 0.75),
+                        ),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.72),
+                            Colors.white.withValues(alpha: 0.38),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: NavigationBar(
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        indicatorColor: primary.withValues(alpha: 0.18),
+                        selectedIndex: _tab,
+                        onDestinationSelected: _goTo,
+                        destinations: [
+                          NavigationDestination(
+                            icon:
+                                icon(0, Icons.home_rounded, Icons.home_outlined),
+                            label: 'Home',
+                          ),
+                          NavigationDestination(
+                            icon: icon(
+                                1, Icons.search_rounded, Icons.search_outlined),
+                            label: 'Search',
+                          ),
+                          NavigationDestination(
+                            icon: icon(2, Icons.library_music_rounded,
+                                Icons.library_music_outlined),
+                            label: 'Library',
+                          ),
+                          NavigationDestination(
+                            icon: Badge(
+                              isLabelVisible: n > 0,
+                              label: Text('$n'),
+                              backgroundColor: primary,
+                              child: icon(3, Icons.download_rounded,
+                                  Icons.download_outlined),
+                            ),
+                            label: 'Downloads',
+                          ),
+                        ],
+                      ),
                     ),
-                    label: 'Downloads',
                   ),
-                ],
+                ),
               );
             },
           ),
