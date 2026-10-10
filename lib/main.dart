@@ -1,38 +1,28 @@
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 import 'src/presentation/app.dart';
-import 'src/presentation/controllers/player_controller.dart';
-
-const MethodChannel _mediaChannel = MethodChannel('musically/media');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Configure the audio session so playback keeps running in the
-  // background / lock screen / Dynamic Island (with UIBackgroundModes).
-  final session = await AudioSession.instance;
-  await session.configure(const AudioSessionConfiguration.music());
-  await session.setActive(true);
+  // Lock screen / Dynamic Island "Now Playing" card and remote controls
+  // (play, pause, next, previous, scrubbing) for the audio engine.
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.hellophone.musically.playback',
+    androidNotificationChannelName: 'Musically playback',
+    androidNotificationOngoing: true,
+  );
 
-  // Lock-screen / Dynamic Island remote commands → the active player.
-  _mediaChannel.setMethodCallHandler((call) async {
-    final player = PlayerController.instance;
-    if (player == null) return null;
-    switch (call.method) {
-      case 'play':
-        await player.play();
-      case 'pause':
-        if (player.isPlaying) await player.pause();
-      case 'next':
-        await player.next();
-      case 'previous':
-        await player.previous();
-    }
-    return null;
-  });
+  // Music audio session: keeps playing in the background / on the lock
+  // screen (together with UIBackgroundModes = audio in Info.plist).
+  try {
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
+  } catch (_) {
+    // Best-effort; the player re-applies it before every playback.
+  }
 
   runApp(const MyApp());
 }
-

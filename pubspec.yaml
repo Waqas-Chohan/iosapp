@@ -42,6 +42,8 @@ dependencies:
   gal: ^2.3.3                    # Save video to iOS Photos
   video_player: ^2.9.0           # In-app preview/player
   audio_session: ^0.1.21         # Background audio + iOS interruptions
+  just_audio: ">=0.9.40 <0.10.0" # Background audio engine (AVPlayer)
+  just_audio_background: ^0.0.1-beta.11 # Lock screen / Dynamic Island Now Playing
 
 dev_dependencies:
   flutter_test:
