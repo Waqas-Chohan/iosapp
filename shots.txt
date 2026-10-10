@@ -1,0 +1,7 @@
+
+✅ home
+✅ library
+✅ playlist
+✅ downloads
+
+🎉 4 tests passed.
