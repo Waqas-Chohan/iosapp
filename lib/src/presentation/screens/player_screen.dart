@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import '../components/app_colors.dart';
 import '../components/artwork.dart';
+import '../components/lyrics_view.dart';
 import '../controllers/player_controller.dart';
 
 /// Full-screen, Spotify-style player for the local queue.
@@ -20,6 +21,7 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   double _dragProgressMs = -1;
+  bool _showLyrics = false;
 
   @override
   Widget build(BuildContext context) {
@@ -66,11 +68,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 48),
+                      IconButton(
+                        onPressed: () =>
+                            setState(() => _showLyrics = !_showLyrics),
+                        tooltip: _showLyrics ? 'Hide lyrics' : 'Show lyrics',
+                        icon: Icon(
+                          Icons.lyrics_outlined,
+                          color: _showLyrics
+                              ? AppColors.accentOrange
+                              : Colors.white70,
+                        ),
+                      ),
                     ],
                   ),
                   Expanded(
-                    child: Center(
+                    child: _showLyrics
+                        ? LyricsView(player: widget.player, item: current)
+                        : Center(
                       child: current.isVideo
                           ? _VideoSurface(videoController: vc)
                           : Column(
