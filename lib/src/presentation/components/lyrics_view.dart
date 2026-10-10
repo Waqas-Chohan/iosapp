@@ -53,7 +53,12 @@ class _LyricsViewState extends State<LyricsView> {
     super.dispose();
   }
 
-  Future<void> _load({bool refresh = false, bool initial = false}) async {
+  Future<void> _load({
+    bool refresh = false,
+    bool initial = false,
+    String? title,
+    String? artist,
+  }) async {
     void reset() {
       _loading = true;
       _failed = false;
@@ -64,7 +69,8 @@ class _LyricsViewState extends State<LyricsView> {
     initial ? reset() : setState(reset);
     try {
       if (refresh) await LyricsView.datasource.clear(widget.item);
-      final lyrics = await LyricsView.datasource.lyricsFor(widget.item);
+      final lyrics = await LyricsView.datasource
+          .lyricsFor(widget.item, title: title, artist: artist);
       if (!mounted) return;
       setState(() {
         _lyrics = lyrics;
@@ -79,6 +85,50 @@ class _LyricsViewState extends State<LyricsView> {
         _failed = true;
       });
     }
+  }
+
+  /// Lets the user correct the song title / artist used for the lookup.
+  Future<void> _manualSearch() async {
+    final q = LyricsView.datasource.queryFor(widget.item);
+    final titleCtrl = TextEditingController(text: q.title);
+    final artistCtrl = TextEditingController(text: q.artist);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Search lyrics'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'Song title'),
+            ),
+            TextField(
+              controller: artistCtrl,
+              decoration: const InputDecoration(labelText: 'Artist (optional)'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.accentOrange),
+            child: const Text('Search'),
+          ),
+        ],
+      ),
+    );
+    final title = titleCtrl.text.trim();
+    final artist = artistCtrl.text.trim();
+    titleCtrl.dispose();
+    artistCtrl.dispose();
+    if (ok != true || title.isEmpty || !mounted) return;
+    await _load(title: title, artist: artist);
   }
 
   void _onTick() {
@@ -109,12 +159,14 @@ class _LyricsViewState extends State<LyricsView> {
     }
     final lyrics = _lyrics;
     if (_failed || lyrics == null || lyrics.isEmpty) {
+      final q = LyricsView.datasource.queryFor(widget.item);
       return _Message(
-        icon: Icons.lyrics_outlined,
+        icon: _failed ? Icons.wifi_off : Icons.lyrics_outlined,
         text: _failed
-            ? 'Could not load lyrics.\nCheck your connection.'
-            : 'No lyrics found for this track.',
+            ? 'Could not reach the lyrics service.\nCheck your connection.'
+            : 'No lyrics found for\n“${q.title}”${q.artist.isEmpty ? '' : ' — ${q.artist}'}',
         onRetry: () => _load(refresh: true),
+        onManual: _manualSearch,
       );
     }
     if (!lyrics.isSynced) {
@@ -207,11 +259,17 @@ class _LyricLineTile extends StatelessWidget {
 }
 
 class _Message extends StatelessWidget {
-  const _Message({required this.icon, required this.text, required this.onRetry});
+  const _Message({
+    required this.icon,
+    required this.text,
+    required this.onRetry,
+    required this.onManual,
+  });
 
   final IconData icon;
   final String text;
   final VoidCallback onRetry;
+  final VoidCallback onManual;
 
   @override
   Widget build(BuildContext context) {
@@ -225,10 +283,24 @@ class _Message extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white60, fontSize: 15)),
           const SizedBox(height: 8),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('Try again',
-                style: TextStyle(color: AppColors.accentOrange)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton(
+                onPressed: onRetry,
+                child: const Text('Try again',
+                    style: TextStyle(color: Colors.white70)),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                onPressed: onManual,
+                icon: const Icon(Icons.search, size: 18),
+                label: const Text('Search manually'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accentOrange,
+                ),
+              ),
+            ],
           ),
         ],
       ),
