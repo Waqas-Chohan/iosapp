@@ -6,6 +6,7 @@ import '../app_services.dart';
 import '../components/app_colors.dart';
 import '../components/app_text_styles.dart';
 import '../components/collection_sheets.dart';
+import '../controllers/library_ai_service.dart';
 import '../components/import_actions.dart';
 import '../components/ui_kit.dart';
 import 'playlist_screen.dart';
@@ -29,6 +30,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   _Filter _filter = _Filter.all;
   _Sort _sort = _Sort.recent;
   bool _searching = false;
+  String? _selectedArtist;
 
   AppServices get s => widget.services;
 
@@ -70,6 +72,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return list;
   }
 
+  List<({String artist, List<LibraryItem> items})> _artists(List<LibraryItem> all) {
+    final q = _search.text.trim().toLowerCase();
+    final map = <String, List<LibraryItem>>{};
+    for (final item in all.where((i) => !i.isVideo)) {
+      if (q.isNotEmpty && !item.author.toLowerCase().contains(q)) continue;
+      map.putIfAbsent(item.author, () => <LibraryItem>[]).add(item);
+    }
+    final artists = map.entries
+        .map((e) => (artist: e.key, items: e.value))
+        .toList()
+      ..sort((a, b) => b.items.length.compareTo(a.items.length));
+    return artists;
+  }
+
+  String _artistInitials(String artist) {
+    final parts = artist.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return 'A';
+    if (parts.length == 1) return parts.first.isEmpty ? 'A' : parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,6 +102,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         surfaceTintColor: Colors.white,
         foregroundColor: AppColors.splashNavy,
         titleSpacing: Ui.gutter,
+        centerTitle: true,
         title: _searching
             ? TextField(
                 controller: _search,
@@ -90,7 +114,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   border: InputBorder.none,
                 ),
               )
-            : const Text('Your Library', style: Ui.screenTitle),
+            : const Text('Library', style: Ui.screenTitle),
         actions: [
           IconButton(
             tooltip: _searching ? 'Close search' : 'Search',
@@ -101,16 +125,48 @@ class _LibraryScreenState extends State<LibraryScreen> {
             }),
           ),
           IconButton(
-            tooltip: 'Import videos',
-            icon: const Icon(Icons.add_photo_alternate_outlined),
-            onPressed: () => importMedia(context, s),
-          ),
-          IconButton(
-            tooltip: 'New playlist',
+            tooltip: 'Add',
             icon: const Icon(Icons.add_rounded, size: 28),
             onPressed: _createCollection,
           ),
-          const SizedBox(width: 4),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            onSelected: (value) async {
+              switch (value) {
+                case 'import':
+                  await importMedia(context, s);
+                  return;
+                case 'artists':
+                  if (mounted) setState(() => _selectedArtist = null);
+                  return;
+                case 'recommendations':
+                  if (mounted) setState(() => _filter = _Filter.all);
+                  return;
+                case 'mood':
+                  if (!mounted) return;
+                  final playlist = await s.ai.moodPlaylist(
+                    library: s.library.items,
+                    mood: 'evening drive',
+                  );
+                  if (!mounted || playlist.items.isEmpty) return;
+                  _showPlaylistSheet(playlist.title, playlist.summary, playlist.items);
+                  return;
+                case 'report':
+                  if (!mounted) return;
+                  final report = await s.ai.weeklyReport(s.library.items);
+                  if (!mounted) return;
+                  _showReportSheet(report);
+                  return;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'import', child: Text('Import videos')),
+              PopupMenuItem(value: 'artists', child: Text('Artists')),
+              PopupMenuItem(value: 'recommendations', child: Text('Recommendations')),
+              PopupMenuItem(value: 'mood', child: Text('Mood playlist')),
+              PopupMenuItem(value: 'report', child: Text('Weekly report')),
+            ],
+          ),
         ],
       ),
       body: ListenableBuilder(
@@ -122,6 +178,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             );
           }
           final all = s.library.items;
+          final artists = _artists(all);
           final collections = s.collections.collections.where((c) {
             if (_filter == _Filter.playlists) return !c.isAlbum;
             if (_filter == _Filter.albums) return c.isAlbum;
@@ -137,8 +194,131 @@ class _LibraryScreenState extends State<LibraryScreen> {
             _Filter.videos => _sorted(s.library.videos),
             _ => <LibraryItem>[],
           };
+          final artistTracks = _selectedArtist == null ? const <LibraryItem>[] : _artistTracks(all);
+          final recommendedFuture = all.isEmpty ? null : s.ai.recommendations(all);
 
           final children = <Widget>[
+            if (_selectedArtist != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Ui.gutter, 12, Ui.gutter, 0),
+                child: InputChip(
+                  label: Text(_selectedArtist!),
+                  onDeleted: () => setState(() => _selectedArtist = null),
+                  deleteIcon: const Icon(Icons.close_rounded),
+                  avatar: CircleAvatar(child: Text(_artistInitials(_selectedArtist!))),
+                ),
+              ),
+            if (recommendedFuture != null)
+              FutureBuilder<List<LibraryItem>>(
+                future: recommendedFuture,
+                builder: (context, snapshot) {
+                  final recommended = snapshot.data ?? const <LibraryItem>[];
+                  if (recommended.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    children: [
+                      SectionHeader(
+                        title: 'For you',
+                        subtitle: 'Recommendations tailored from your recent listening',
+                        action: 'Play all',
+                        onAction: () => s.playAndOpen(context, recommended),
+                      ),
+                      for (final item in recommended.take(5))
+                        TrackTile(
+                          item: item,
+                          isPlaying: s.player.current?.id == item.id,
+                          onTap: () => s.playAndOpen(context, recommended, index: recommended.indexOf(item)),
+                          onMore: () => showTrackActions(context, s, item, queue: recommended),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            if (artists.isNotEmpty) ...[
+              SectionHeader(
+                title: 'Artists',
+                subtitle: 'Tap a profile to see every song by that artist',
+                action: _selectedArtist == null ? null : 'Clear',
+                onAction: _selectedArtist == null ? null : () => setState(() => _selectedArtist = null),
+              ),
+              SizedBox(
+                height: 132,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: artists.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final artist = artists[index];
+                    final selected = _selectedArtist == artist.artist;
+                    return FutureBuilder<String?>(
+                      future: s.ai.artistArtworkUrl(artist.artist),
+                      builder: (context, snapshot) {
+                        final imageUrl = snapshot.data;
+                        return InkWell(
+                          onTap: () => setState(() => _selectedArtist = artist.artist),
+                          borderRadius: BorderRadius.circular(24),
+                          child: Container(
+                            width: 108,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: selected ? AppColors.splashNavy : AppColors.inputFill,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: selected ? AppColors.splashNavy : const Color(0xFFE4E8EE),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: selected ? Colors.white : AppColors.splashNavy,
+                                  backgroundImage: imageUrl == null || imageUrl.isEmpty
+                                      ? null
+                                      : NetworkImage(imageUrl),
+                                  child: imageUrl == null || imageUrl.isEmpty
+                                      ? Text(
+                                          _artistInitials(artist.artist),
+                                          style: TextStyle(
+                                            color: selected ? AppColors.splashNavy : Colors.white,
+                                            fontFamily: 'Sora',
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  artist.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: selected ? Colors.white : AppColors.splashNavy,
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${artist.items.length} songs',
+                                  style: TextStyle(
+                                    color: selected ? Colors.white70 : AppColors.textGray,
+                                    fontFamily: 'Poppins',
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
             _filters(),
             if (all.isEmpty && s.collections.collections.isEmpty)
               EmptyState(
@@ -171,7 +351,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 items: s.collections.itemsOf(c, all),
                 onTap: () => openPlaylist(context, s, c.id),
               ),
-            if (tracks.isNotEmpty) ...[
+            if (_selectedArtist != null) ...[
+              _SortRow(
+                count: artistTracks.length,
+                sort: _sort,
+                onSort: (v) => setState(() => _sort = v),
+              ),
+              for (var i = 0; i < artistTracks.length; i++)
+                TrackTile(
+                  item: artistTracks[i],
+                  isPlaying: s.player.current?.id == artistTracks[i].id,
+                  onTap: () => s.playAndOpen(context, artistTracks, index: i),
+                  onMore: () => showTrackActions(context, s, artistTracks[i], queue: artistTracks),
+                ),
+            ] else if (tracks.isNotEmpty) ...[
               _SortRow(
                 count: tracks.length,
                 sort: _sort,
@@ -203,6 +396,43 @@ class _LibraryScreenState extends State<LibraryScreen> {
           );
         },
       ),
+    );
+  }
+
+  List<LibraryItem> _artistTracks(List<LibraryItem> all) {
+    final artist = _selectedArtist;
+    if (artist == null) return const [];
+    return _sorted(all.where((item) => item.author == artist && !item.isVideo).toList());
+  }
+
+  void _showPlaylistSheet(String title, String summary, List<LibraryItem> items) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => _InfoSheet(
+        title: title,
+        summary: summary,
+        items: items,
+        onPlay: () => s.playAndOpen(context, items),
+      ),
+    );
+  }
+
+  void _showReportSheet(WeeklyListeningReport report) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (_) => _ReportSheet(report: report),
     );
   }
 
@@ -244,6 +474,113 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _InfoSheet extends StatelessWidget {
+  const _InfoSheet({
+    required this.title,
+    required this.summary,
+    required this.items,
+    required this.onPlay,
+  });
+
+  final String title;
+  final String summary;
+  final List<LibraryItem> items;
+  final VoidCallback onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+      shrinkWrap: true,
+      children: [
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(top: 10, bottom: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDADFE6),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+          child: Text(title, style: AppTextStyles.sectionTitle, textAlign: TextAlign.center),
+        ),
+        if (summary.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Ui.gutter, 8, Ui.gutter, 0),
+            child: Text(summary, textAlign: TextAlign.center, style: AppTextStyles.optionSubtitle),
+          ),
+        const SizedBox(height: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+          child: PillButton(label: 'Play all', icon: Icons.play_arrow_rounded, onPressed: onPlay),
+        ),
+        const SizedBox(height: 14),
+        for (final item in items)
+          TrackTile(item: item),
+      ],
+    );
+  }
+}
+
+class _ReportSheet extends StatelessWidget {
+  const _ReportSheet({required this.report});
+
+  final WeeklyListeningReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+      shrinkWrap: true,
+      children: [
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(top: 10, bottom: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDADFE6),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+          child: Text(report.title, textAlign: TextAlign.center, style: AppTextStyles.sectionTitle),
+        ),
+        if (report.summary.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Ui.gutter, 8, Ui.gutter, 0),
+            child: Text(report.summary, textAlign: TextAlign.center, style: AppTextStyles.optionSubtitle),
+          ),
+        if (report.narrative.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Ui.gutter, 16, Ui.gutter, 0),
+            child: Text(report.narrative, textAlign: TextAlign.center, style: AppTextStyles.description),
+          ),
+        if (report.highlights.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          for (final highlight in report.highlights)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Ui.gutter, vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.insights_rounded, color: AppColors.accentOrange, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(highlight, style: AppTextStyles.optionTitle)),
+                ],
+              ),
+            ),
+        ],
+      ],
     );
   }
 }

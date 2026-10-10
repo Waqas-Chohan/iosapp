@@ -15,6 +15,7 @@ import '../components/mini_player_bar.dart';
 import '../components/ui_kit.dart';
 import '../controllers/collections_model.dart';
 import '../controllers/download_manager.dart';
+import '../controllers/library_ai_service.dart';
 import '../controllers/library_model.dart';
 import '../controllers/player_controller.dart';
 import 'downloads_screen.dart';
@@ -54,15 +55,17 @@ class _AppShellState extends State<AppShell> {
     final collections = CollectionsModel(
       widget.collectionsRepository ?? CollectionsRepositoryImpl(),
     );
+    final player = PlayerController();
     library.onRemoved = collections.forgetItem;
     _services = AppServices(
-      player: PlayerController(),
+      player: player,
       library: library,
       collections: collections,
       downloads: DownloadManager(
         widget.repository ?? VideoRepositoryImpl(),
         library: library,
       ),
+      ai: LibraryAiService(player),
     );
     library.refresh();
     collections.load();

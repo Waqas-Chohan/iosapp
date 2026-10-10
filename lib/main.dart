@@ -1,11 +1,13 @@
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 import 'src/presentation/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
 
   // Lock screen / Dynamic Island "Now Playing" card and remote controls
   // (play, pause, next, previous, scrubbing) for the audio engine.

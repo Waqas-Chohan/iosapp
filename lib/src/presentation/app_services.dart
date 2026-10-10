@@ -4,6 +4,7 @@ import '../data/datasources/media_importer.dart';
 import '../domain/entities/library_item.dart';
 import 'controllers/collections_model.dart';
 import 'controllers/download_manager.dart';
+import 'controllers/library_ai_service.dart';
 import 'controllers/library_model.dart';
 import 'controllers/player_controller.dart';
 import 'screens/player_screen.dart';
@@ -15,6 +16,7 @@ class AppServices {
     required this.library,
     required this.collections,
     required this.downloads,
+    required this.ai,
     MediaImporter? importer,
   }) : importer = importer ?? MediaImporter();
 
@@ -22,6 +24,7 @@ class AppServices {
   final LibraryModel library;
   final CollectionsModel collections;
   final DownloadManager downloads;
+  final LibraryAiService ai;
   final MediaImporter importer;
 
   /// Rebuild trigger for anything that shows library or playlist data.

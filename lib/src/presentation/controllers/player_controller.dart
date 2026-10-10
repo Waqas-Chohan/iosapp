@@ -55,6 +55,8 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   double speed = 1.0;
   bool backgroundPlayEnabled = true;
 
+  final List<LibraryItem> recentlyPlayed = [];
+
   LibraryItem? get current =>
       (_index >= 0 && _index < playlist.length) ? playlist[_index] : null;
 
@@ -165,6 +167,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     playlist
       ..clear()
       ..addAll(items);
+    _remember(items[startIndex.clamp(0, items.length - 1)]);
     final start = startIndex.clamp(0, items.length - 1);
     await _ensureAudioSession();
     try {
@@ -185,6 +188,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> playIndex(int index) async {
     if (index < 0 || index >= playlist.length) return;
+    _remember(playlist[index]);
     await _load(index);
     notifyListeners();
   }
@@ -453,6 +457,14 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       await _load(_index - 1);
     }
     notifyListeners();
+  }
+
+  void _remember(LibraryItem item) {
+    recentlyPlayed.removeWhere((entry) => entry.id == item.id);
+    recentlyPlayed.insert(0, item);
+    if (recentlyPlayed.length > 24) {
+      recentlyPlayed.removeRange(24, recentlyPlayed.length);
+    }
   }
 
   void cycleLoopMode() {

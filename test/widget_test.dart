@@ -21,6 +21,7 @@ import 'package:my_first_app/src/presentation/app_services.dart';
 import 'package:my_first_app/src/presentation/components/artwork.dart';
 import 'package:my_first_app/src/presentation/controllers/collections_model.dart';
 import 'package:my_first_app/src/presentation/controllers/download_manager.dart';
+import 'package:my_first_app/src/presentation/controllers/library_ai_service.dart';
 import 'package:my_first_app/src/presentation/controllers/library_model.dart';
 import 'package:my_first_app/src/presentation/controllers/player_controller.dart';
 import 'package:my_first_app/src/presentation/screens/home_screen.dart';
@@ -280,11 +281,13 @@ LibraryItem _item(String id, String title, {bool audio = false}) => LibraryItem(
 
 AppServices _services(List<LibraryItem> items) {
   final library = LibraryModel(_MemoryLibrary(items));
+  final player = PlayerController();
   return AppServices(
-    player: PlayerController(),
+    player: player,
     library: library,
     collections: CollectionsModel(_MemoryCollections()),
     downloads: DownloadManager(_FakeVideoRepository(), library: library),
+    ai: LibraryAiService(player),
   );
 }
 

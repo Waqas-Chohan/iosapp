@@ -37,6 +37,8 @@ class LocalStorageDatasource {
 
   Future<File> downloadsRegistryFile() => _libraryFile('downloads.json');
 
+  Future<File> aiCacheFile() => _libraryFile('ai_cache.json');
+
   Future<File> _libraryFile(String name) async {
     final dir = Directory('${(await _documents()).path}/musically_library');
     await _ensure(dir);
