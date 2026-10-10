@@ -894,11 +894,15 @@ class _NewPlaylistCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'New playlist',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.optionTitle
                     .copyWith(fontSize: 13.5, fontWeight: FontWeight.w600),
               ),
               Text(
                 'Playlist or album',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: AppTextStyles.optionSubtitle.copyWith(fontSize: 12),
               ),
             ],
