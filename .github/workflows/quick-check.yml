@@ -2,6 +2,8 @@ name: Quick check (temp)
 on:
   push:
     branches: [ ci/premium-home ]
+permissions:
+  contents: write
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -12,5 +14,13 @@ jobs:
           channel: stable
           flutter-version: '3.44.9'
       - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test
+      - name: Analyze + test (report as commit comment)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          flutter analyze > analyze.txt 2>&1; a=$?
+          flutter test --reporter expanded > test.txt 2>&1; t=$?
+          { echo "analyze=$a test=$t"; echo '```'; tail -c 30000 analyze.txt; echo '```'; echo '```'; grep -v "^\s*$" test.txt | grep -E -A25 "FAILED|EXCEPTION|Error|Expected|══" | head -300; tail -5 test.txt; echo '```'; } > report.md
+          gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@report.md > /dev/null
+          [ $a -eq 0 ] && [ $t -eq 0 ]
