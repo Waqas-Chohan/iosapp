@@ -123,6 +123,9 @@ void main() {
       ]);
       await services.library.refresh();
       await services.collections.create('Road trip', itemIds: ['a', 'b']);
+      tester.view.physicalSize = const Size(900, 2600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
 
       await tester.pumpWidget(
         MaterialApp(home: HomeScreen(services: services)),

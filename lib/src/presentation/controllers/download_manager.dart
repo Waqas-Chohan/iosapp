@@ -26,16 +26,16 @@ import 'library_model.dart';
 class DownloadManager extends ChangeNotifier {
   DownloadManager(
     this._repository, {
-    required LibraryModel library,
+    required this.library,
     LocalStorageDatasource? storage,
     MediaTools? tools,
     this.maxConcurrent = 2,
-  })  : _library = library,
-        _storage = storage ?? LocalStorageDatasource(),
+  })  : _storage = storage ?? LocalStorageDatasource(),
         _tools = tools ?? const MediaTools();
 
   final VideoRepository _repository;
-  final LibraryModel _library;
+  /// Finished downloads are registered here.
+  final LibraryModel library;
   final LocalStorageDatasource _storage;
   final MediaTools _tools;
   final int maxConcurrent;
@@ -409,7 +409,7 @@ class DownloadManager extends ChangeNotifier {
   Future<void> _finish(DownloadTask t) async {
     final path = t.resultPath!;
     final thumb =
-        await _library.repository.saveThumbnail(t.thumbnailUrl, t.videoId);
+        await library.repository.saveThumbnail(t.thumbnailUrl, t.videoId);
     final item = LibraryItem(
       id: '${t.videoId}_${t.option.tag}_${DateTime.now().millisecondsSinceEpoch}',
       videoId: t.videoId,
@@ -424,7 +424,7 @@ class DownloadManager extends ChangeNotifier {
       durationSeconds: t.durationSeconds,
     );
     try {
-      await _library.add(item);
+      await library.add(item);
     } catch (_) {
       // The file is safe on disk even if the registry write fails.
     }
