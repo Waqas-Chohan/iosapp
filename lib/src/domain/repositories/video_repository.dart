@@ -1,26 +1,16 @@
 import '../entities/video_download_info.dart';
 
-/// Progress callback for an active download.
-typedef DownloadProgressCallback = void Function(
-  int receivedBytes,
-  int totalBytes,
-);
-
-/// Contract for the video source + local media store.
+/// Contract for the video source + Photos export.
 ///
-/// Implementations live in `data/repositories` (YoutubeExplode + dio + gal).
+/// Implementations live in `data/repositories` (YoutubeExplode + gal).
+/// Byte transfer itself is handled by the download manager.
 abstract interface class VideoRepository {
   Future<VideoDownloadInfo> fetchVideoInfo(String urlOrId);
 
-  /// Downloads the given stream and returns the local file path.
-  Future<String> downloadToLocal(
-    StreamOption option,
-    DownloadProgressCallback? onProgress,
-  );
+  /// A fresh direct URL for stream [tag] (YouTube URLs expire).
+  Future<String?> refreshStreamUrl(String videoId, int tag);
 
-  void cancelDownload();
-
-  /// Saves a local file into the iOS Photos library.
+  /// Saves a local video file into the iOS Photos library.
   Future<void> saveVideoToGallery(String filePath);
 
   void close();

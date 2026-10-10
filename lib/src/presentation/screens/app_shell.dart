@@ -1,156 +1,182 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../data/repositories/collections_repository_impl.dart';
 import '../../data/repositories/library_repository_impl.dart';
-import '../../domain/entities/library_collection.dart';
+import '../../data/repositories/video_repository_impl.dart';
+import '../../domain/entities/download_task.dart';
+import '../../domain/repositories/collections_repository.dart';
 import '../../domain/repositories/library_repository.dart';
 import '../../domain/repositories/video_repository.dart';
+import '../app_services.dart';
 import '../components/app_colors.dart';
 import '../components/mini_player_bar.dart';
+import '../components/ui_kit.dart';
+import '../controllers/collections_model.dart';
+import '../controllers/download_manager.dart';
 import '../controllers/library_model.dart';
 import '../controllers/player_controller.dart';
-import 'create_screen.dart';
+import 'downloads_screen.dart';
 import 'home_screen.dart';
 import 'library_screen.dart';
 import 'player_screen.dart';
-import 'search_screen.dart';
+import 'youtube_search_screen.dart';
 
-/// Root post-login shell: Home + Library tabs with the mini player.
+/// Root post-login shell: Home, Search, Library and Downloads tabs with
+/// the mini player above the navigation bar.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, this.repository, this.libraryRepository});
+  const AppShell({
+    super.key,
+    this.repository,
+    this.libraryRepository,
+    this.collectionsRepository,
+  });
 
   final VideoRepository? repository;
   final LibraryRepository? libraryRepository;
+  final CollectionsRepository? collectionsRepository;
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
-  final PlayerController _player = PlayerController();
-  late final LibraryModel _library;
+  late final AppServices _services;
+  StreamSubscription<DownloadTask>? _completedSub;
   int _tab = 0;
-  final List<LibraryCollection> _collections = [];
 
   @override
   void initState() {
     super.initState();
-    _library = LibraryModel(
-      widget.libraryRepository ?? LibraryRepositoryImpl(),
+    final library =
+        LibraryModel(widget.libraryRepository ?? LibraryRepositoryImpl());
+    final collections = CollectionsModel(
+      widget.collectionsRepository ?? CollectionsRepositoryImpl(),
     );
-    _library.refresh();
+    library.onRemoved = collections.forgetItem;
+    _services = AppServices(
+      player: PlayerController(),
+      library: library,
+      collections: collections,
+      downloads: DownloadManager(
+        widget.repository ?? VideoRepositoryImpl(),
+        library: library,
+      ),
+    );
+    library.refresh();
+    collections.load();
+    _services.downloads.load();
+    _completedSub = _services.downloads.onCompleted.listen(_onCompleted);
   }
 
   @override
   void dispose() {
-    _player.dispose();
-    _library.dispose();
+    _completedSub?.cancel();
+    _services.downloads.dispose();
+    _services.player.dispose();
+    _services.library.dispose();
+    _services.collections.dispose();
     super.dispose();
   }
 
+  void _onCompleted(DownloadTask t) {
+    if (!mounted) return;
+    final where = !t.isVideo
+        ? 'added to your Library'
+        : t.savedToPhotos
+            ? 'saved to Photos and your Library'
+            : 'added to your Library';
+    Ui.snack(
+      context,
+      '“${t.title}” $where',
+      action: 'Play',
+      onAction: () {
+        final item = t.libraryItemId == null
+            ? null
+            : _services.library.byId(t.libraryItemId!);
+        if (item != null) _services.playAndOpen(context, [item]);
+      },
+    );
+  }
+
   void _openPlayer() {
-    if (_player.current == null) return;
+    if (_services.player.current == null) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PlayerScreen(player: _player),
+        builder: (_) => PlayerScreen(player: _services.player),
       ),
     );
   }
 
-  void _onCollectionCreated(LibraryCollection collection) {
-    setState(() {
-      _collections.insert(0, collection);
-      _tab = 2;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${collection.type} created: ${collection.name}')),
-    );
-  }
+  void _goTo(int tab) => setState(() => _tab = tab);
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _library,
-      builder: (context, _) {
-        return Scaffold(
-          body: IndexedStack(
-            index: _tab,
-            children: [
-              HomeScreen(
-                repository: widget.repository,
-                player: _player,
-                libraryModel: _library,
-              ),
-              SearchScreen(items: _library.items, player: _player),
-              LibraryScreen(
-                player: _player,
-                libraryModel: _library,
-                collections: _collections,
-              ),
-              CreateScreen(
-                items: _library.items,
-                onCreate: _onCollectionCreated,
-              ),
-            ],
-          ),
-          bottomNavigationBar: Column(
+    final s = _services;
+    return Scaffold(
+      body: IndexedStack(
+        index: _tab,
+        children: [
+          HomeScreen(services: s, onOpenTab: _goTo),
+          YoutubeSearchScreen(services: s, embedded: true),
+          LibraryScreen(services: s),
+          DownloadsScreen(services: s, onSearch: () => _goTo(1)),
+        ],
+      ),
+      bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListenableBuilder(
-            listenable: _player,
-            builder: (context, _) => _player.current == null
+            listenable: s.player,
+            builder: (context, _) => s.player.current == null
                 ? const SizedBox.shrink()
-                : MiniPlayerBar(player: _player, onTap: _openPlayer),
+                : MiniPlayerBar(player: s.player, onTap: _openPlayer),
           ),
-          NavigationBar(
-            backgroundColor: Colors.white,
-            indicatorColor: AppColors.accentOrange.withValues(alpha: 0.18),
-            selectedIndex: _tab,
-            onDestinationSelected: (i) => setState(() => _tab = i),
-            destinations: [
-              NavigationDestination(
-                icon: Icon(
-                  _tab == 0 ? Icons.home : Icons.home_outlined,
-                  color: _tab == 0
-                      ? AppColors.splashNavy
-                      : AppColors.textGray,
-                ),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(
-                  _tab == 1 ? Icons.search : Icons.search_outlined,
-                  color: _tab == 1
-                      ? AppColors.splashNavy
-                      : AppColors.textGray,
-                ),
-                label: 'Search',
-              ),
-              NavigationDestination(
-                icon: Icon(
-                  _tab == 2
-                      ? Icons.library_music
-                      : Icons.library_music_outlined,
-                  color: _tab == 2
-                      ? AppColors.splashNavy
-                      : AppColors.textGray,
-                ),
-                label: 'Library',
-              ),
-              NavigationDestination(
-                icon: Icon(
-                  _tab == 3 ? Icons.create : Icons.create_outlined,
-                  color: _tab == 3
-                      ? AppColors.splashNavy
-                      : AppColors.textGray,
-                ),
-                label: 'Create',
-              ),
-            ],
+          ListenableBuilder(
+            listenable: s.downloads,
+            builder: (context, _) {
+              final n = s.downloads.inProgressCount;
+              Widget icon(int i, IconData on, IconData off) => Icon(
+                    _tab == i ? on : off,
+                    color:
+                        _tab == i ? AppColors.splashNavy : AppColors.textGray,
+                  );
+              return NavigationBar(
+                backgroundColor: Colors.white,
+                indicatorColor: AppColors.accentOrange.withValues(alpha: 0.18),
+                selectedIndex: _tab,
+                onDestinationSelected: _goTo,
+                destinations: [
+                  NavigationDestination(
+                    icon: icon(0, Icons.home_rounded, Icons.home_outlined),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    icon: icon(1, Icons.search_rounded, Icons.search_outlined),
+                    label: 'Search',
+                  ),
+                  NavigationDestination(
+                    icon: icon(2, Icons.library_music_rounded,
+                        Icons.library_music_outlined),
+                    label: 'Library',
+                  ),
+                  NavigationDestination(
+                    icon: Badge(
+                      isLabelVisible: n > 0,
+                      label: Text('$n'),
+                      backgroundColor: AppColors.accentOrange,
+                      child: icon(3, Icons.download_rounded,
+                          Icons.download_outlined),
+                    ),
+                    label: 'Downloads',
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
-    );
-      },
     );
   }
 }

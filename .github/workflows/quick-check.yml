@@ -1,0 +1,16 @@
+name: Quick check (temp)
+on:
+  push:
+    branches: [ ci/premium-home ]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.44.9'
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
