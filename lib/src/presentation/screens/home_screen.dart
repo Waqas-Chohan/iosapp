@@ -138,7 +138,7 @@ class HomeScreen extends StatelessWidget {
                         _CoverCard(
                           title: c.name,
                           subtitle:
-                              '${c.type} · ${c.itemIds.length} items',
+                              '${c.type} · ${c.itemIds.length} item${c.itemIds.length == 1 ? '' : 's'}',
                           cover: CollectionCover(
                             items: s.collections.itemsOf(c, s.library.items),
                             size: 150,

@@ -325,7 +325,7 @@ Future<void> showAddToCollectionSheet(
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.optionTitle),
                   subtitle: Text(
-                    '${c.type} · ${c.itemIds.length} items',
+                    '${c.type} · ${c.itemIds.length} item${c.itemIds.length == 1 ? '' : 's'}',
                     style: AppTextStyles.optionSubtitle,
                   ),
                   trailing: ids.every(c.itemIds.contains)
