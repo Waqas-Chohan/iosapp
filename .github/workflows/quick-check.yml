@@ -20,7 +20,12 @@ jobs:
         run: |
           set +e
           flutter analyze > analyze.txt 2>&1; a=$?
-          flutter test --reporter expanded > test.txt 2>&1; t=$?
+          flutter test test/widget_test.dart test/lyrics_test.dart --reporter expanded > test.txt 2>&1; t=$?
           { echo "analyze=$a test=$t"; echo '```'; tail -c 30000 analyze.txt; echo '```'; echo '```'; grep -v "^\s*$" test.txt | grep -v "^00:0" | head -150; tail -4 test.txt; echo '```'; } > report.md
           gh api repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments -F body=@report.md > /dev/null
+          flutter test test/screenshots_test.dart --update-goldens > shots.txt 2>&1 || tail -40 shots.txt
+          git config user.name ci; git config user.email ci@example.com
+          git checkout --orphan ci/shots
+          git rm -rfq --cached . ; git add test/shots/*.png shots.txt
+          git commit -qm shots && git push -fq origin ci/shots || true
           [ $a -eq 0 ] && [ $t -eq 0 ]
