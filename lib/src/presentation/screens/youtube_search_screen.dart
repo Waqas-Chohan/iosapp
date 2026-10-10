@@ -180,6 +180,7 @@ class _YoutubeSearchScreenState extends State<YoutubeSearchScreen> {
   Widget _buildBody() {
     if (_showSuggestions && _suggestions.isNotEmpty) {
       return ListView(
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         children: [
           for (final s in _suggestions)
             ListTile(
@@ -209,6 +210,7 @@ class _YoutubeSearchScreenState extends State<YoutubeSearchScreen> {
     }
     if (_results.isEmpty) {
       return ListView(
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
         children: [
           const SizedBox(height: 40),
           const EmptyState(
@@ -228,7 +230,9 @@ class _YoutubeSearchScreenState extends State<YoutubeSearchScreen> {
         final offset = local.length;
         return ListView.builder(
           controller: _scroll,
-          padding: const EdgeInsets.only(bottom: 24),
+          padding: EdgeInsets.only(
+            bottom: 24 + MediaQuery.paddingOf(context).bottom,
+          ),
           itemCount: offset + _results.length + (_loadingMore ? 1 : 0),
           itemBuilder: (context, i) {
             if (i < offset) return local[i];

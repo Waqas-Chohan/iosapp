@@ -110,7 +110,9 @@ class DownloadsScreen extends StatelessWidget {
             );
           }
           return ListView(
-            padding: const EdgeInsets.only(bottom: 32),
+            padding: EdgeInsets.only(
+              bottom: 32 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               if (active.isNotEmpty) ...[
                 SectionHeader(

@@ -209,7 +209,12 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ],
-              const SliverToBoxAdapter(child: SizedBox(height: 28)),
+              // Clears the floating glass tab bar (extendBody: true).
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 28 + MediaQuery.paddingOf(context).bottom,
+                ),
+              ),
             ],
           );
         },

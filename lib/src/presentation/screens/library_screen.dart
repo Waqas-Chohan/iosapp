@@ -195,7 +195,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             const SizedBox(height: 24),
           ];
-          return ListView(children: children);
+          return ListView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.paddingOf(context).bottom,
+            ),
+            children: children,
+          );
         },
       ),
     );
