@@ -44,7 +44,6 @@ dependencies:
   audio_session: ^0.1.21         # Background audio + iOS interruptions
   just_audio: ">=0.9.40 <0.10.0" # Background audio engine (AVPlayer)
   just_audio_background: ^0.0.1-beta.11 # Lock screen / Dynamic Island Now Playing
-  flutter_dotenv: ^5.2.1
 
 dev_dependencies:
   flutter_test:

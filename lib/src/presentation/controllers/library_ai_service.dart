@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../data/datasources/local_storage_datasource.dart';
 import '../../domain/entities/library_item.dart';
@@ -41,30 +41,26 @@ class LibraryAiService {
   final LocalStorageDatasource _storage;
   final Dio _dio = Dio();
   final Map<String, String?> _artistArtworkMemory = {};
-
-  static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
+  final ValueNotifier<String> status = ValueNotifier<String>('Ready');
 
   Future<List<LibraryItem>> recommendations(List<LibraryItem> library) async {
     final recent = player.recentlyPlayed;
     final signature = _signature([...library, ...recent]);
     final cached = await _readCache('recommendations');
     if (cached != null && cached['signature'] == signature) {
+      status.value = 'Smart recommendations loaded from cache';
       return _itemsFromIds(library, cached['ids'] as List? ?? const []);
     }
 
-    final prompt = _recommendationPrompt(library, recent);
-    final payload = await _generateJson(prompt, fallback: () {
-      final fallbackItems = _localFallback(library, recent, 8);
-      return {
-        'ids': fallbackItems.map((i) => i.id).toList(),
-      };
-    });
+    status.value = 'Building smart recommendations…';
+    final items = _localRecommendations(library, recent, 8);
     await _writeCache('recommendations', {
       'signature': signature,
-      'ids': (payload['ids'] as List? ?? const []).whereType<String>().toList(),
+      'ids': items.map((i) => i.id).toList(),
       'createdAt': DateTime.now().toIso8601String(),
     });
-    return _itemsFromIds(library, payload['ids'] as List? ?? const []);
+    status.value = items.isEmpty ? 'No recommendations available yet' : 'Smart recommendations ready';
+    return items;
   }
 
   Future<MoodPlaylist> moodPlaylist({
@@ -75,6 +71,7 @@ class LibraryAiService {
     final signature = '${_signature([...library, ...recent])}::$mood';
     final cached = await _readCache('mood:$mood');
     if (cached != null && cached['signature'] == signature) {
+      status.value = 'Mood playlist loaded from cache';
       return MoodPlaylist(
         title: cached['title'] as String? ?? _moodTitle(mood),
         summary: cached['summary'] as String? ?? '',
@@ -82,29 +79,22 @@ class LibraryAiService {
       );
     }
 
-    final prompt = _moodPrompt(library, recent, mood);
-    final payload = await _generateJson(prompt, fallback: () {
-      final fallbackItems = _localFallback(library, recent, 10);
-      return {
-        'title': _moodTitle(mood),
-        'summary': 'Built from your recent library activity.',
-        'ids': fallbackItems.map((i) => i.id).toList(),
-      };
-    });
-    final title = payload['title'] as String? ?? _moodTitle(mood);
-    final summary = payload['summary'] as String? ?? '';
-    final ids = (payload['ids'] as List? ?? const []).whereType<String>().toList();
+    status.value = 'Building mood playlist…';
+    final items = _localMoodPlaylist(library, recent, mood, 10);
+    final title = _moodTitle(mood);
+    final summary = _moodSummary(mood, items, recent);
     await _writeCache('mood:$mood', {
       'signature': signature,
       'title': title,
       'summary': summary,
-      'ids': ids,
+      'ids': items.map((i) => i.id).toList(),
       'createdAt': DateTime.now().toIso8601String(),
     });
+    status.value = items.isEmpty ? 'Mood playlist using local fallback' : 'Mood playlist ready';
     return MoodPlaylist(
       title: title,
       summary: summary,
-      items: _itemsFromIds(library, ids),
+      items: items,
     );
   }
 
@@ -115,6 +105,7 @@ class LibraryAiService {
     final cachedAt = DateTime.tryParse(cached?['createdAt'] as String? ?? '');
     if (cached != null && cached['signature'] == signature && cachedAt != null) {
       if (DateTime.now().difference(cachedAt) < const Duration(days: 7)) {
+        status.value = 'Weekly report loaded from cache';
         return WeeklyListeningReport(
           title: cached['title'] as String? ?? 'Weekly listening report',
           summary: cached['summary'] as String? ?? '',
@@ -126,26 +117,18 @@ class LibraryAiService {
       }
     }
 
-    final prompt = _weeklyPrompt(library, recent);
-    final payload = await _generateJson(prompt, fallback: () {
-      final fallbackHighlights = _topArtists(library, recent)
-          .take(3)
-          .map((e) => '${e.$1} · ${e.$2} tracks')
-          .toList();
-      return {
-        'title': 'Weekly listening report',
-        'summary': 'A quick snapshot of your recent listening.',
-        'narrative':
-            'You have been leaning into ${fallbackHighlights.isEmpty ? 'a balanced mix' : fallbackHighlights.first.split(' · ').first}.',
-        'highlights': fallbackHighlights,
-      };
-    });
-    final title = payload['title'] as String? ?? 'Weekly listening report';
-    final summary = payload['summary'] as String? ?? '';
-    final narrative = payload['narrative'] as String? ?? '';
-    final highlights = (payload['highlights'] as List? ?? const [])
-        .whereType<String>()
-        .toList();
+    status.value = 'Building weekly report…';
+    final topArtists = _topArtists(library, recent).take(3).toList();
+    final highlights = <String>[
+      if (recent.isNotEmpty) 'Recent plays: ${recent.length} tracks in your latest queue',
+      if (topArtists.isNotEmpty)
+        'Top artist: ${topArtists.first.$1} with ${topArtists.first.$2} tracks in rotation',
+      if (library.isNotEmpty) 'Library size: ${library.length} items ready for curation',
+    ];
+    final summary = _weeklySummary(topArtists, recent);
+    final narrative = _weeklyNarrative(topArtists, recent, library);
+    const title = 'Weekly listening report';
+
     await _writeCache('weekly_report', {
       'signature': signature,
       'title': title,
@@ -154,6 +137,7 @@ class LibraryAiService {
       'highlights': highlights,
       'createdAt': DateTime.now().toIso8601String(),
     });
+    status.value = 'Weekly report ready';
     return WeeklyListeningReport(
       title: title,
       summary: summary,
@@ -185,7 +169,9 @@ class LibraryAiService {
       );
       final data = res.data?['data'];
       final first = data is List && data.isNotEmpty ? data.first : null;
-      final url = first is Map ? first['picture_big'] as String? ?? first['picture_medium'] as String? : null;
+      final url = first is Map
+          ? first['picture_big'] as String? ?? first['picture_medium'] as String?
+          : null;
       _artistArtworkMemory[key] = url;
       if (url != null && url.isNotEmpty) {
         await _writeCache('artist_artworks', {
@@ -229,55 +215,6 @@ class LibraryAiService {
     }
   }
 
-  Future<Map<String, dynamic>> _generateJson(
-    String prompt, {
-    required Map<String, dynamic> Function() fallback,
-  }) async {
-    if (_apiKey.isEmpty) return fallback();
-    try {
-      final res = await _dio.post<Map<String, dynamic>>(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$_apiKey',
-        data: {
-          'contents': [
-            {
-              'role': 'user',
-              'parts': [
-                {'text': prompt},
-              ],
-            },
-          ],
-          'generationConfig': {
-            'temperature': 0.7,
-            'responseMimeType': 'application/json',
-          },
-        },
-      );
-      final text = _extractText(res.data);
-      if (text.isEmpty) return fallback();
-      final decoded = jsonDecode(text);
-      if (decoded is Map<String, dynamic>) return decoded;
-    } catch (_) {
-      // Fall through to the local fallback.
-    }
-    return fallback();
-  }
-
-  String _extractText(Map<String, dynamic>? data) {
-    try {
-      final candidates = data?['candidates'] as List?;
-      final first = candidates?.first as Map?;
-      final content = first?['content'] as Map?;
-      final parts = content?['parts'] as List?;
-      final text = parts?.firstWhere(
-            (part) => part is Map && part['text'] is String,
-            orElse: () => const <String, dynamic>{},
-          ) as Map?;
-      return text?['text'] as String? ?? '';
-    } catch (_) {
-      return '';
-    }
-  }
-
   List<LibraryItem> _itemsFromIds(List<LibraryItem> library, List ids) {
     final map = {for (final item in library) item.id: item};
     final items = <LibraryItem>[];
@@ -293,6 +230,79 @@ class LibraryAiService {
     return items;
   }
 
+  List<LibraryItem> _localRecommendations(
+    List<LibraryItem> library,
+    List<LibraryItem> recent,
+    int limit,
+  ) {
+    final recentIds = recent.map((item) => item.id).toSet();
+    final recentArtistCounts = <String, int>{};
+    for (final item in recent) {
+      recentArtistCounts[item.author] = (recentArtistCounts[item.author] ?? 0) + 1;
+    }
+    final scored = <({LibraryItem item, int score})>[];
+
+    for (final item in library) {
+      var score = 0;
+      if (!recentIds.contains(item.id)) score += 40;
+      score += (recentArtistCounts[item.author] ?? 0) * 60;
+      score += _keywordAffinity(item.title, recent) * 2;
+      score += _keywordAffinity(item.author, recent);
+      score += item.isVideo ? -5 : 10;
+      score += item.createdAt.millisecondsSinceEpoch ~/ 100000000;
+      scored.add((item: item, score: score));
+    }
+
+    scored.sort((a, b) => b.score.compareTo(a.score));
+    final items = <LibraryItem>[];
+    for (final entry in scored) {
+      if (items.any((candidate) => candidate.id == entry.item.id)) continue;
+      items.add(entry.item);
+      if (items.length >= limit) break;
+    }
+
+    if (items.isEmpty) {
+      items.addAll(_localFallback(library, recent, limit));
+    }
+
+    return items.take(limit).toList();
+  }
+
+  List<LibraryItem> _localMoodPlaylist(
+    List<LibraryItem> library,
+    List<LibraryItem> recent,
+    String mood,
+    int limit,
+  ) {
+    final terms = _moodTerms(mood);
+    final scored = <({LibraryItem item, int score})>[];
+
+    for (final item in library) {
+      var score = 0;
+      for (final term in terms) {
+        if (item.title.toLowerCase().contains(term)) score += 35;
+        if (item.author.toLowerCase().contains(term)) score += 20;
+      }
+      score += _keywordAffinity(item.title, recent);
+      score += item.isVideo ? -10 : 5;
+      scored.add((item: item, score: score));
+    }
+
+    scored.sort((a, b) => b.score.compareTo(a.score));
+    final items = <LibraryItem>[];
+    for (final entry in scored) {
+      if (items.any((candidate) => candidate.id == entry.item.id)) continue;
+      items.add(entry.item);
+      if (items.length >= limit) break;
+    }
+
+    if (items.isEmpty) {
+      items.addAll(_localFallback(library, recent, limit));
+    }
+
+    return items.take(limit).toList();
+  }
+
   List<LibraryItem> _localFallback(
     List<LibraryItem> library,
     List<LibraryItem> recent,
@@ -300,6 +310,7 @@ class LibraryAiService {
   ) {
     final seen = <String>{};
     final items = <LibraryItem>[];
+
     void addAll(Iterable<LibraryItem> source) {
       for (final item in source) {
         if (seen.add(item.id)) items.add(item);
@@ -331,110 +342,74 @@ class LibraryAiService {
     return entries.map((e) => (e.key, e.value)).toList();
   }
 
+  int _keywordAffinity(String text, List<LibraryItem> recent) {
+    final normalized = text.toLowerCase();
+    var score = 0;
+    for (final item in recent) {
+      final recentWords = _words('${item.title} ${item.author}');
+      if (recentWords.any(normalized.contains)) {
+        score += 8;
+      }
+    }
+    return score;
+  }
+
+  List<String> _words(String input) {
+    return input
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9]+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+  }
+
+  List<String> _moodTerms(String mood) => _words(mood);
+
+  String _weeklySummary(List<(String, int)> topArtists, List<LibraryItem> recent) {
+    if (recent.isEmpty && topArtists.isEmpty) {
+      return 'Your listening report will appear once you start playing more tracks.';
+    }
+    final artist = topArtists.isEmpty ? 'your favorites' : topArtists.first.$1;
+    final recentCount = recent.length;
+    return 'This week, $artist shaped most of your listening, with $recentCount recent plays feeding your queue.';
+  }
+
+  String _weeklyNarrative(
+    List<(String, int)> topArtists,
+    List<LibraryItem> recent,
+    List<LibraryItem> library,
+  ) {
+    final artists = topArtists.take(3).map((entry) => entry.$1).toList();
+    final artistPhrase = artists.isEmpty
+        ? 'a balanced mix of artists'
+        : artists.length == 1
+            ? artists.first
+            : '${artists.sublist(0, artists.length - 1).join(', ')} and ${artists.last}';
+    final recentPhrase = recent.isEmpty
+        ? 'There were no recent plays to summarize yet.'
+        : 'Recent listening stayed active, with ${recent.length} tracks in the latest run.';
+    final libraryPhrase = library.isEmpty
+        ? 'Your library is still being built out.'
+        : 'The catalog now contains ${library.length} items to curate from.';
+    return 'Your week leaned toward $artistPhrase. $recentPhrase $libraryPhrase';
+  }
+
+  String _moodTitle(String mood) {
+    final trimmed = mood.trim();
+    if (trimmed.isEmpty) return 'Mood mix';
+    return '${trimmed[0].toUpperCase()}${trimmed.substring(1)} mix';
+  }
+
+  String _moodSummary(String mood, List<LibraryItem> items, List<LibraryItem> recent) {
+    if (items.isEmpty) {
+      return 'No matching tracks were found, so this mix falls back to your library history.';
+    }
+    final firstArtist = items.first.author;
+    final recentCount = recent.length;
+    return 'A ${mood.trim().isEmpty ? 'curated' : mood} mix centered around $firstArtist and informed by $recentCount recent plays.';
+  }
+
   String _signature(List<LibraryItem> items) => items
       .map((item) =>
           '${item.id}:${item.title}:${item.author}:${item.createdAt.millisecondsSinceEpoch}')
       .join('|');
-
-  String _recommendationPrompt(List<LibraryItem> library, List<LibraryItem> recent) {
-    final catalog = _catalogBlock(library);
-    final recentBlock = recent.isEmpty
-        ? 'No recent plays captured yet.'
-        : recent
-            .take(12)
-            .map((item) => '- ${item.title} — ${item.author}')
-            .join('\n');
-    return '''
-You are generating local music recommendations for a Flutter music app.
-Return JSON only with the shape:
-{"title":"For you","summary":"short sentence","ids":["itemId", ...]}
-
-Rules:
-- Pick up to 8 ids.
-- Use only ids from the catalog.
-- Prefer songs that fit the recent listening pattern.
-- Keep the mix fresh and varied.
-
-Recent plays:
-$recentBlock
-
-Catalog:
-$catalog
-''';
-  }
-
-  String _moodPrompt(
-    List<LibraryItem> library,
-    List<LibraryItem> recent,
-    String mood,
-  ) {
-    final catalog = _catalogBlock(library);
-    final recentBlock = recent.isEmpty
-        ? 'No recent plays captured yet.'
-        : recent
-            .take(12)
-            .map((item) => '- ${item.title} — ${item.author}')
-            .join('\n');
-    return '''
-Create a vibe-matched playlist for: $mood.
-Return JSON only with the shape:
-{"title":"playlist name","summary":"short sentence","ids":["itemId", ...]}
-
-Rules:
-- Pick up to 10 ids.
-- Use only ids from the catalog.
-- Make the sequence feel cohesive for the mood.
-
-Recent plays:
-$recentBlock
-
-Catalog:
-$catalog
-''';
-  }
-
-  String _weeklyPrompt(List<LibraryItem> library, List<LibraryItem> recent) {
-    final catalog = _catalogBlock(library);
-    final recentBlock = recent.isEmpty
-        ? 'No recent plays captured yet.'
-        : recent
-            .take(20)
-            .map((item) => '- ${item.title} — ${item.author}')
-            .join('\n');
-    final topArtists = _topArtists(library, recent)
-        .take(5)
-        .map((entry) => '- ${entry.$1} (${entry.$2} tracks)')
-        .join('\n');
-    return '''
-Write a short weekly listening report for a music app.
-Return JSON only with the shape:
-{"title":"Weekly listening report","summary":"short sentence","narrative":"short paragraph","highlights":["bullet 1", "bullet 2", "bullet 3"]}
-
-Use the recent plays and top artists below.
-
-Recent plays:
-$recentBlock
-
-Top artists:
-$topArtists
-
-Catalog:
-$catalog
-''';
-  }
-
-  String _catalogBlock(List<LibraryItem> library) {
-    final items = List<LibraryItem>.of(library)
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return items
-        .take(40)
-        .map((item) =>
-            '- id:${item.id} | title:${item.title} | artist:${item.author} | added:${item.createdAt.toIso8601String()}')
-        .join('\n');
-  }
-
-  String _moodTitle(String mood) {
-    if (mood.isEmpty) return 'Mood mix';
-    return '${mood[0].toUpperCase()}${mood.substring(1)} mix';
-  }
 }

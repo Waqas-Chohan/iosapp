@@ -352,6 +352,95 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 onTap: () => openPlaylist(context, s, c.id),
               ),
             if (_selectedArtist != null) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(Ui.gutter, 12, Ui.gutter, 8),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppColors.splashNavy, AppColors.accentOrange],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(26),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.splashNavy.withValues(alpha: 0.18),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 58,
+                          height: 58,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              _artistInitials(_selectedArtist!),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontFamily: 'Sora',
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Artist spotlight',
+                                style: TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _selectedArtist!,
+                                style: const TextStyle(
+                                  fontFamily: 'Sora',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 22,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${artistTracks.length} tracks in your library',
+                                style: const TextStyle(
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => setState(() => _selectedArtist = null),
+                          icon: const Icon(Icons.close_rounded, color: Colors.white),
+                          tooltip: 'Clear selection',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               _SortRow(
                 count: artistTracks.length,
                 sort: _sort,
@@ -392,7 +481,59 @@ class _LibraryScreenState extends State<LibraryScreen> {
             padding: EdgeInsets.only(
               bottom: MediaQuery.paddingOf(context).bottom,
             ),
-            children: children,
+            children: [
+              ValueListenableBuilder<String>(
+                valueListenable: s.ai.status,
+                builder: (context, status, _) {
+                  if (status.isEmpty || status == 'Ready') return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(Ui.gutter, 12, Ui.gutter, 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: status.contains('failed') || status.contains('unavailable')
+                            ? const Color(0xFFFFF1F1)
+                            : const Color(0xFFE9F7EE),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: status.contains('failed') || status.contains('unavailable')
+                              ? const Color(0xFFC45B5B)
+                              : const Color(0xFF6BBE8A),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            status.contains('failed') || status.contains('unavailable')
+                                ? Icons.warning_amber_rounded
+                                : Icons.check_circle_rounded,
+                            size: 18,
+                            color: status.contains('failed') || status.contains('unavailable')
+                                ? const Color(0xFFB32929)
+                                : const Color(0xFF1F8A4C),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              status,
+                              style: TextStyle(
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
+                                color: status.contains('failed') || status.contains('unavailable')
+                                    ? const Color(0xFF8A2F2F)
+                                    : const Color(0xFF1F5B39),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ...children,
+            ],
           );
         },
       ),
@@ -494,35 +635,69 @@ class _InfoSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
       shrinkWrap: true,
       children: [
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 10, bottom: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDADFE6),
-              borderRadius: BorderRadius.circular(2),
+        Container(
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 20),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.splashNavy, AppColors.accentOrange],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                child: Text(
+                  title,
+                  style: AppTextStyles.sectionTitle.copyWith(color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              if (summary.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(Ui.gutter, 8, Ui.gutter, 0),
+                  child: Text(
+                    summary,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.optionSubtitle.copyWith(color: Colors.white70),
+                  ),
+                ),
+              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                child: PillButton(
+                  label: 'Play all',
+                  icon: Icons.play_arrow_rounded,
+                  onPressed: onPlay,
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
-          child: Text(title, style: AppTextStyles.sectionTitle, textAlign: TextAlign.center),
-        ),
-        if (summary.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Ui.gutter, 8, Ui.gutter, 0),
-            child: Text(summary, textAlign: TextAlign.center, style: AppTextStyles.optionSubtitle),
+          padding: const EdgeInsets.fromLTRB(Ui.gutter, 18, Ui.gutter, 0),
+          child: Text(
+            'Included tracks',
+            style: AppTextStyles.sectionTitle,
           ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
-          child: PillButton(label: 'Play all', icon: Icons.play_arrow_rounded, onPressed: onPlay),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
         for (final item in items)
           TrackTile(item: item),
       ],
@@ -537,50 +712,163 @@ class _ReportSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final totalHighlights = report.highlights.length;
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
       shrinkWrap: true,
       children: [
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 10, bottom: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDADFE6),
-              borderRadius: BorderRadius.circular(2),
+        Container(
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 18),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.splashBlue, AppColors.splashNavy],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                child: Text(
+                  report.title,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.sectionTitle.copyWith(color: Colors.white),
+                ),
+              ),
+              if (report.summary.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(Ui.gutter, 8, Ui.gutter, 0),
+                  child: Text(
+                    report.summary,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.optionSubtitle.copyWith(color: Colors.white70),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                child: Row(
+                  children: [
+                    _StatPill(label: 'Highlights', value: '$totalHighlights'),
+                    const SizedBox(width: 10),
+                    _StatPill(label: 'Mood', value: 'Curated'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
-          child: Text(report.title, textAlign: TextAlign.center, style: AppTextStyles.sectionTitle),
-        ),
-        if (report.summary.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(Ui.gutter, 8, Ui.gutter, 0),
-            child: Text(report.summary, textAlign: TextAlign.center, style: AppTextStyles.optionSubtitle),
-          ),
         if (report.narrative.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(Ui.gutter, 16, Ui.gutter, 0),
-            child: Text(report.narrative, textAlign: TextAlign.center, style: AppTextStyles.description),
+            padding: const EdgeInsets.fromLTRB(Ui.gutter, 18, Ui.gutter, 0),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.inputFill,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                report.narrative,
+                style: AppTextStyles.description.copyWith(color: AppColors.splashNavy),
+              ),
+            ),
           ),
         if (report.highlights.isNotEmpty) ...[
-          const SizedBox(height: 18),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(Ui.gutter, 18, Ui.gutter, 8),
+            child: Text(
+              'Key takeaways',
+              style: AppTextStyles.sectionTitle,
+            ),
+          ),
           for (final highlight in report.highlights)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Ui.gutter, vertical: 4),
-              child: Row(
-                children: [
-                  const Icon(Icons.insights_rounded, color: AppColors.accentOrange, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(highlight, style: AppTextStyles.optionTitle)),
-                ],
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE7EBF0)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentOrange.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.insights_rounded, color: AppColors.accentOrange, size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(highlight, style: AppTextStyles.optionTitle)),
+                  ],
+                ),
               ),
             ),
         ],
       ],
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'Sora',
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

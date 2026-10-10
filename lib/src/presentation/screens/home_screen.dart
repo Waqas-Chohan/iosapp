@@ -53,6 +53,7 @@ class HomeScreen extends StatelessWidget {
             ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
           final videos = items.where((i) => i.isVideo).toList();
           final collections = s.collections.collections;
+          final artists = _artists(items); // Moved artist section into the body
 
           return CustomScrollView(
             slivers: [
@@ -116,6 +117,33 @@ class HomeScreen extends StatelessWidget {
                       services: s,
                     ),
                   ),
+                if (artists.isNotEmpty) ...[
+                  const SliverToBoxAdapter(
+                    child: SectionHeader(
+                      title: 'Artists',
+                      subtitle: 'Tap an artist to open their songs',
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 170,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                        itemCount: artists.length.clamp(0, 8).toInt(),
+                        itemBuilder: (context, i) {
+                          final artist = artists[i];
+                          return _ArtistCard(
+                            artist: artist.artist,
+                            count: artist.items.length,
+                            artworkUrlFuture: s.ai.artistArtworkUrl(artist.artist),
+                            onTap: () => _showArtistSheet(context, s, artist.artist, artist.items),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
               ],
               SliverToBoxAdapter(
                 child: SectionHeader(
@@ -221,6 +249,41 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+
+  List<({String artist, List<LibraryItem> items})> _artists(List<LibraryItem> all) {
+    final map = <String, List<LibraryItem>>{};
+    for (final item in all.where((i) => !i.isVideo)) {
+      map.putIfAbsent(item.author, () => <LibraryItem>[]).add(item);
+    }
+    return map.entries
+        .map((entry) => (artist: entry.key, items: entry.value))
+        .toList()
+      ..sort((a, b) => b.items.length.compareTo(a.items.length));
+  }
+
+  void _showArtistSheet(
+    BuildContext context,
+    AppServices s,
+    String artist,
+    List<LibraryItem> songs,
+  ) {
+    if (songs.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (_) => _ArtistSongsSheet(
+        services: s,
+        artist: artist,
+        songs: songs,
+        onPlayAll: () => s.playAndOpen(context, songs),
+      ),
+    );
+  }
 }
 
 // ------------------------------------------------------------- header ----
@@ -292,6 +355,7 @@ class _Header extends StatelessWidget {
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const PersonalizeScreen(),
+
                       ),
                     ),
                     icon: const Icon(Icons.palette_outlined,
@@ -1009,6 +1073,200 @@ class _VideoCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ArtistCard extends StatelessWidget {
+  const _ArtistCard({
+    required this.artist,
+    required this.count,
+    required this.artworkUrlFuture,
+    required this.onTap,
+  });
+
+  final String artist;
+  final int count;
+  final Future<String?> artworkUrlFuture;
+  final VoidCallback onTap;
+
+  String _initials(String value) {
+    final parts = value.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty) return 'A';
+    if (parts.length == 1) return parts.first.isEmpty ? 'A' : parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: SizedBox(
+          width: 150,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 118,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  gradient: Ui.brandGradient,
+                  boxShadow: Ui.softShadow(0.14),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: FutureBuilder<String?>(
+                    future: artworkUrlFuture,
+                    builder: (context, snapshot) {
+                      final url = snapshot.data;
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          if (url != null && url.isNotEmpty)
+                            Image.network(url, fit: BoxFit.cover)
+                          else
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: Ui.brandGradient,
+                              ),
+                            ),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.45),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Center(
+                            child: Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _initials(artist),
+                                  style: const TextStyle(
+                                    fontFamily: 'Sora',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                artist,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.optionTitle.copyWith(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                '$count song${count == 1 ? '' : 's'}',
+                style: AppTextStyles.optionSubtitle.copyWith(fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArtistSongsSheet extends StatelessWidget {
+  const _ArtistSongsSheet({
+    required this.services,
+    required this.artist,
+    required this.songs,
+    required this.onPlayAll,
+  });
+
+  final AppServices services;
+  final String artist;
+  final List<LibraryItem> songs;
+  final VoidCallback onPlayAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+      shrinkWrap: true,
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(0, 12, 0, 18),
+          decoration: const BoxDecoration(
+            gradient: Ui.brandGradient,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                child: Text(
+                  artist,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.sectionTitle.copyWith(color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${songs.length} song${songs.length == 1 ? '' : 's'} in your library',
+                style: AppTextStyles.optionSubtitle.copyWith(color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Ui.gutter),
+                child: PillButton(
+                  label: 'Play all',
+                  icon: Icons.play_arrow_rounded,
+                  onPressed: onPlayAll,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < songs.length; i++)
+          TrackTile(
+            item: songs[i],
+            onTap: () => services.playAndOpen(context, songs, index: i),
+          ),
+      ],
     );
   }
 }
