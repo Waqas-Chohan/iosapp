@@ -13,6 +13,7 @@ import 'package:my_first_app/src/domain/entities/library_collection.dart';
 import 'package:my_first_app/src/domain/entities/library_item.dart';
 import 'package:my_first_app/src/domain/entities/video_download_info.dart';
 import 'package:my_first_app/src/domain/repositories/collections_repository.dart';
+import 'package:my_first_app/src/domain/repositories/favorites_repository.dart';
 import 'package:my_first_app/src/domain/repositories/library_repository.dart';
 import 'package:my_first_app/src/domain/repositories/video_repository.dart';
 import 'package:my_first_app/src/domain/usecases/extract_video_id.dart';
@@ -21,9 +22,11 @@ import 'package:my_first_app/src/presentation/app_services.dart';
 import 'package:my_first_app/src/presentation/components/artwork.dart';
 import 'package:my_first_app/src/presentation/controllers/collections_model.dart';
 import 'package:my_first_app/src/presentation/controllers/download_manager.dart';
+import 'package:my_first_app/src/presentation/controllers/favorites_model.dart';
 import 'package:my_first_app/src/presentation/controllers/library_ai_service.dart';
 import 'package:my_first_app/src/presentation/controllers/library_model.dart';
 import 'package:my_first_app/src/presentation/controllers/player_controller.dart';
+import 'package:my_first_app/src/presentation/screens/artists_screen.dart';
 import 'package:my_first_app/src/presentation/screens/home_screen.dart';
 import 'package:my_first_app/src/presentation/screens/login_screen.dart';
 
@@ -263,13 +266,70 @@ void main() {
       expect(Artwork.letterboxZoom(1.5), closeTo(16 / 13.5, 1e-9));
     });
   });
+
+  group('Favorites & artists', () {
+    test('FavoritesModel toggles, de-dupes case-insensitively, persists',
+        () async {
+      final repo = _MemoryFavorites();
+      final model = FavoritesModel(repo);
+      await model.load();
+      expect(model.artists, isEmpty);
+      expect(model.isFavorite('Drake'), isFalse);
+
+      expect(await model.toggle('Drake'), isTrue);
+      expect(await model.toggle('drake'), isFalse); // same artist, case-insensitive
+      expect(model.artists, isEmpty);
+
+      await model.add('Drake');
+      await model.add('Weeknd');
+      expect(model.artists, ['Weeknd', 'Drake']); // newest first
+      expect(model.isFavorite('DRAKE'), isTrue);
+      expect(repo.saved, ['Weeknd', 'Drake']); // persisted
+    });
+
+    testWidgets('Artists screen groups songs and toggles a favorite',
+        (WidgetTester tester) async {
+      final services = _services([
+        _item('a', 'Song A', audio: true, author: 'Artist a'),
+        _item('b', 'Song B', audio: true, author: 'Artist b'),
+        _item('c', 'Song C', audio: true, author: 'Artist c'),
+        _item('a2', 'Song A2', audio: true, author: 'Artist a'),
+      ]);
+      await services.library.refresh();
+      await services.favorites.load();
+
+      await tester.pumpWidget(MaterialApp(
+        home: ArtistsScreen(services: services),
+      ));
+      await tester.pump();
+
+      // Three distinct artists grouped (Artist a has 2 songs).
+      expect(find.text('Artist a'), findsOneWidget);
+      expect(find.text('Artist b'), findsOneWidget);
+      expect(find.text('2 songs'), findsOneWidget);
+
+      // Favorite "Artist a" via its heart button.
+      final heart = find.descendant(
+        of: find.widgetWithText(ListTile, 'Artist a'),
+        matching: find.byIcon(Icons.favorite_border_rounded),
+      );
+      expect(heart, findsOneWidget);
+      await tester.tap(heart);
+      await tester.pump();
+      expect(services.favorites.isFavorite('Artist a'), isTrue);
+      expect(find.text('Favorites'), findsOneWidget);
+    });
+  });
+
 }
 
-LibraryItem _item(String id, String title, {bool audio = false}) => LibraryItem(
+LibraryItem _item(String id, String title,
+        {bool audio = false, String? author}) =>
+    LibraryItem(
       id: id,
       videoId: 'vid_$id',
       title: title,
-      author: 'Artist $id',
+      author: author ?? 'Artist $id',
       filePath: '/nowhere/$id.mp4',
       category: audio ? StreamCategory.audio : StreamCategory.muxed,
       qualityLabel: audio ? '128kbps' : '1080p',
@@ -288,6 +348,7 @@ AppServices _services(List<LibraryItem> items) {
     collections: CollectionsModel(_MemoryCollections()),
     downloads: DownloadManager(_FakeVideoRepository(), library: library),
     ai: LibraryAiService(player),
+    favorites: FavoritesModel(_MemoryFavorites()),
   );
 }
 
@@ -319,6 +380,16 @@ class _MemoryCollections implements CollectionsRepository {
   @override
   Future<void> save(List<LibraryCollection> collections) async =>
       saved = List.of(collections);
+}
+
+class _MemoryFavorites implements FavoritesRepository {
+  List<String> saved = [];
+
+  @override
+  Future<List<String>> load() async => List.of(saved);
+
+  @override
+  Future<void> save(List<String> names) async => saved = List.of(names);
 }
 
 class _FakeVideoRepository implements VideoRepository {

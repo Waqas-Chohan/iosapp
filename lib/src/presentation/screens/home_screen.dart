@@ -12,6 +12,7 @@ import '../components/collection_sheets.dart';
 import '../components/format.dart';
 import '../components/import_actions.dart';
 import '../components/ui_kit.dart';
+import 'artists_screen.dart';
 import 'personalize_screen.dart';
 import 'playlist_screen.dart';
 import 'youtube_search_screen.dart';
@@ -118,10 +119,16 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 if (artists.isNotEmpty) ...[
-                  const SliverToBoxAdapter(
+                  SliverToBoxAdapter(
                     child: SectionHeader(
                       title: 'Artists',
                       subtitle: 'Tap an artist to open their songs',
+                      action: 'See all',
+                      onAction: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => ArtistsScreen(services: s),
+                        ),
+                      ),
                     ),
                   ),
                   SliverToBoxAdapter(

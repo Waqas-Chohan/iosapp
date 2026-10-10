@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../data/repositories/collections_repository_impl.dart';
+import '../../data/repositories/favorites_repository_impl.dart';
 import '../../data/repositories/library_repository_impl.dart';
 import '../../data/repositories/video_repository_impl.dart';
 import '../../domain/entities/download_task.dart';
@@ -15,6 +16,7 @@ import '../components/mini_player_bar.dart';
 import '../components/ui_kit.dart';
 import '../controllers/collections_model.dart';
 import '../controllers/download_manager.dart';
+import '../controllers/favorites_model.dart';
 import '../controllers/library_ai_service.dart';
 import '../controllers/library_model.dart';
 import '../controllers/player_controller.dart';
@@ -57,6 +59,7 @@ class _AppShellState extends State<AppShell> {
     );
     final player = PlayerController();
     library.onRemoved = collections.forgetItem;
+    final favorites = FavoritesModel(FavoritesRepositoryImpl());
     _services = AppServices(
       player: player,
       library: library,
@@ -66,9 +69,11 @@ class _AppShellState extends State<AppShell> {
         library: library,
       ),
       ai: LibraryAiService(player),
+      favorites: favorites,
     );
     library.refresh();
     collections.load();
+    favorites.load();
     _services.downloads.load();
     _completedSub = _services.downloads.onCompleted.listen(_onCompleted);
   }
@@ -80,6 +85,7 @@ class _AppShellState extends State<AppShell> {
     _services.player.dispose();
     _services.library.dispose();
     _services.collections.dispose();
+    _services.favorites.dispose();
     super.dispose();
   }
 

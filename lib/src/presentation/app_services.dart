@@ -4,6 +4,7 @@ import '../data/datasources/media_importer.dart';
 import '../domain/entities/library_item.dart';
 import 'controllers/collections_model.dart';
 import 'controllers/download_manager.dart';
+import 'controllers/favorites_model.dart';
 import 'controllers/library_ai_service.dart';
 import 'controllers/library_model.dart';
 import 'controllers/player_controller.dart';
@@ -17,6 +18,7 @@ class AppServices {
     required this.collections,
     required this.downloads,
     required this.ai,
+    required this.favorites,
     MediaImporter? importer,
   }) : importer = importer ?? MediaImporter();
 
@@ -25,10 +27,15 @@ class AppServices {
   final CollectionsModel collections;
   final DownloadManager downloads;
   final LibraryAiService ai;
+  final FavoritesModel favorites;
   final MediaImporter importer;
 
   /// Rebuild trigger for anything that shows library or playlist data.
-  Listenable get libraryChanges => Listenable.merge([library, collections]);
+  Listenable get libraryChanges => Listenable.merge([
+        library,
+        collections,
+        favorites,
+      ]);
 
   /// Starts [queue] at [index] and opens the full player.
   Future<void> playAndOpen(

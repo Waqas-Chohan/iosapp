@@ -37,6 +37,8 @@ class LocalStorageDatasource {
 
   Future<File> downloadsRegistryFile() => _libraryFile('downloads.json');
 
+  Future<File> favoritesFile() => _libraryFile('favorites.json');
+
   Future<File> aiCacheFile() => _libraryFile('ai_cache.json');
 
   Future<File> _libraryFile(String name) async {
