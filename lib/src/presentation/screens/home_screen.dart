@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../data/datasources/youtube_search_datasource.dart';
 import '../../data/repositories/video_repository_impl.dart';
 import '../../domain/entities/video_download_info.dart';
 import '../../domain/repositories/video_repository.dart';
@@ -13,6 +14,7 @@ import '../controllers/download_controller.dart';
 import '../controllers/library_model.dart';
 import '../controllers/player_controller.dart';
 import 'player_screen.dart';
+import 'youtube_search_screen.dart';
 
 /// Musically home — paste/type a link, pick a quality, download it.
 class HomeScreen extends StatefulWidget {
@@ -89,6 +91,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            onPressed: _openYoutubeSearch,
+            tooltip: 'Search YouTube',
+            icon: const Icon(Icons.travel_explore, color: AppColors.splashNavy),
+          ),
+        ],
       ),
       body: ListenableBuilder(
         listenable: _controller,
@@ -438,6 +447,19 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => PlayerScreen(player: player),
       ),
     );
+  }
+
+  /// Opens in-app YouTube search; a tapped result is fetched right away.
+  Future<void> _openYoutubeSearch() async {
+    final busy = _controller.status == DownloadStatus.loading ||
+        _controller.status == DownloadStatus.downloading;
+    if (busy) return;
+    final hit = await Navigator.of(context).push<SearchHit>(
+      MaterialPageRoute(builder: (_) => const YoutubeSearchScreen()),
+    );
+    if (hit == null || !mounted) return;
+    setState(() => _linkController.text = hit.url);
+    await _onFetchPressed();
   }
 
   Future<void> _onFetchPressed() async {

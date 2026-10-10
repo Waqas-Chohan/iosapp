@@ -15,6 +15,12 @@ class LocalStorageDatasource {
     return _ensure(dir);
   }
 
+  Future<Directory> lyricsDirectory() async {
+    final dir =
+        Directory('${(await _documents()).path}/musically_library/lyrics');
+    return _ensure(dir);
+  }
+
   Future<File> libraryRegistryFile() async {
     final dir = Directory('${(await _documents()).path}/musically_library');
     await _ensure(dir);
