@@ -2,6 +2,14 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.70 — 2026-10-15
+
+### ✨ New
+- **Muz for Android** — the full app on Android phones, with playback controls in the notification and on the lock screen. Download **Muz.apk** below.
+
+### 🛠 Improved
+- **Mac:** music keeps playing when you close the window — control it from **Control Center › Now Playing**, the media keys, or by right-clicking Muz in the Dock. Click the Dock icon to bring the window back; quit with ⌘Q.
+
 ## 1.0.68 — 2026-10-15
 
 ### ✨ New
