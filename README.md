@@ -12,8 +12,6 @@ Stream any song instantly, keep it for offline, build playlists with friends and
 ![iPhone](https://img.shields.io/badge/iPhone-iOS%2013%2B-0C2C5C?style=for-the-badge&logo=apple)
 ![Mac](https://img.shields.io/badge/Mac-macOS%2011%2B-0C2C5C?style=for-the-badge&logo=apple)
 
-<img src="assets/banner.jpg" width="820" alt="Muz on iPhone" />
-
 </div>
 
 ---
@@ -41,21 +39,6 @@ Updates arrive inside the app: **You → Check for updates**.
 - **Weekly report** — insights into what you listened to most
 - **Your colours, your vibe** — themes that recolour the whole app, plus **Light & Dark mode**
 - **Muz for Mac** — sidebar, menu bar controls and keyboard shortcuts
-
-## 📸 Screenshots
-
-<table>
-  <tr>
-    <td><img src="assets/screens/stream.jpg" width="200" alt="Stream" /></td>
-    <td><img src="assets/screens/now-playing.jpg" width="200" alt="Now Playing" /></td>
-    <td><img src="assets/screens/lock-screen.jpg" width="200" alt="Lock Screen" /></td>
-  </tr>
-  <tr>
-    <td><img src="assets/screens/weekly-report.jpg" width="200" alt="Weekly report" /></td>
-    <td><img src="assets/screens/themes.jpg" width="200" alt="Themes" /></td>
-    <td><img src="assets/screens/dark-mode.jpg" width="200" alt="Dark mode" /></td>
-  </tr>
-</table>
 
 ---
 
