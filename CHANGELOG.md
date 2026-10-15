@@ -2,6 +2,15 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.72 — 2026-10-15
+
+### 🛠 Improved
+- **Android:** a clearer, more see-through glass tab bar that floats over the content, edge to edge.
+
+### 🐞 Fixed
+- **Android:** songs now play — downloaded and streamed songs no longer close the app.
+- **Android:** fixed "App not installed" on some phones (such as Samsung Galaxy on Android 11); the download is also about half the size.
+
 ## 1.0.71 — 2026-10-15
 
 ### 🐞 Fixed
