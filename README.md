@@ -12,6 +12,8 @@ Stream any song instantly, keep it for offline, build playlists with friends and
 ![iPhone](https://img.shields.io/badge/iPhone-iOS%2013%2B-0C2C5C?style=for-the-badge&logo=apple)
 ![Mac](https://img.shields.io/badge/Mac-macOS%2011%2B-0C2C5C?style=for-the-badge&logo=apple)
 
+### 🌐 [muzwebsite.vercel.app](https://muzwebsite.vercel.app)
+
 </div>
 
 ---
