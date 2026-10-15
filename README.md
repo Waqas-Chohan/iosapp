@@ -6,10 +6,11 @@
 
 **Your music. Streamed, saved, shared.**
 
-Stream any song instantly, keep it for offline, build playlists with friends and listen together — on iPhone and Mac.
+Stream any song instantly, keep it for offline, build playlists with friends and listen together — on iPhone, Android and Mac.
 
 [![Latest release](https://img.shields.io/github/v/release/Waqas-Chohan/iosapp?label=latest&color=FE6E04&style=for-the-badge)](https://github.com/Waqas-Chohan/iosapp/releases/latest)
 ![iPhone](https://img.shields.io/badge/iPhone-iOS%2013%2B-0C2C5C?style=for-the-badge&logo=apple)
+![Android](https://img.shields.io/badge/Android-6%2B-0C2C5C?style=for-the-badge&logo=android)
 ![Mac](https://img.shields.io/badge/Mac-macOS%2011%2B-0C2C5C?style=for-the-badge&logo=apple)
 
 ### 🌐 [muzwebsite.vercel.app](https://muzwebsite.vercel.app)
@@ -23,6 +24,7 @@ Stream any song instantly, keep it for offline, build playlists with friends and
 | Platform | How to get it |
 |---|---|
 | 📱 **iPhone** | Install with **SideStore**, then add this source once:<br>`https://github.com/Waqas-Chohan/iosapp/releases/latest/download/source.json`<br>→ [Step-by-step iPhone guide](docs/INSTALL-IPHONE.md) |
+| 🤖 **Android** (6.0+) | [**Download Muz.apk**](https://github.com/Waqas-Chohan/iosapp/releases/latest/download/Muz.apk)<br>→ [Android install guide](docs/INSTALL-ANDROID.md) |
 | 💻 **Mac** (Apple chips & Intel) | [**Download Muz.dmg**](https://github.com/Waqas-Chohan/iosapp/releases/latest/download/Muz.dmg)<br>→ [Mac install guide](docs/INSTALL-MAC.md) |
 | 📦 **IPA file** (Sideloadly / AltStore) | [**Download Muz.ipa**](https://github.com/Waqas-Chohan/iosapp/releases/latest/download/Muz.ipa) |
 
@@ -34,7 +36,7 @@ Updates arrive inside the app: **You → Check for updates**.
 
 - **Stream any song instantly** — no download needed, or save it for offline in one tap
 - **Beautiful Now Playing** — seek anywhere, loop, playback speed, background play
-- **Lock Screen & Dynamic Island** controls
+- **Lock Screen & Dynamic Island** controls (media notification on Android)
 - **Playlists & albums** — swipe to queue, drag to reorder, play next
 - **Shared playlists** — invite friends with a code and edit together live
 - **Listen Together** — same song, same moment, with your friends
