@@ -2,6 +2,11 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.71 — 2026-10-15
+
+### 🐞 Fixed
+- **Android:** fixed "App not installed" on some phones (such as Samsung Galaxy on Android 11); the download is also about half the size.
+
 ## 1.0.70 — 2026-10-15
 
 ### ✨ New
