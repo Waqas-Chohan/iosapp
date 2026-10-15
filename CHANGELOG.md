@@ -1,0 +1,39 @@
+# Changelog
+
+All notable changes to Muz. Newest first.
+
+## 1.0.65 — 2026-10-14
+
+### ✨ New
+- **Listen Together** — join a shared playlist session and hear the same song at the same moment as your friends.
+- Developer credits with Instagram link in **About**.
+
+### 🛠 Improved
+- Home carousel shows three full cards on wide screens (Mac).
+- About › "What you can do" cards redesigned.
+
+## 1.0.64 — 2026-10-13
+
+### ✨ New
+- **Muz for Mac** — one universal app for Apple chips and Intel, with sidebar, menu bar and keyboard shortcuts.
+
+## 1.0.57 — 2026-10-13
+
+### ✨ New
+- **Dark mode** — follow the iPhone or pick Light / Dark yourself.
+- Profile picture (avatar) on the **You** tab.
+- **Stream** button in search results — play instantly without downloading.
+- Recently streamed songs in your library.
+- **About** page.
+- Artist pictures available offline.
+
+## 1.0.56 — 2026-10-13
+
+### ✨ New
+- **Shared playlists** — share a playlist with a code; friends can join and edit together live.
+
+## 1.0.55 — 2026-10-12
+
+### ✨ New
+- Versioned releases with a SideStore / AltStore source.
+- **You › About › Check for updates** and an update badge on the **You** tab.
