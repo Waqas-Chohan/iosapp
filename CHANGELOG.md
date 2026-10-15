@@ -2,6 +2,12 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.67 — 2026-10-15
+
+### 🛠 Improved
+- Updates now come from the official Muz download page, with checksums for every file.
+- Faster, more reliable start-up checks.
+
 ## 1.0.65 — 2026-10-14
 
 ### ✨ New
