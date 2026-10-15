@@ -2,6 +2,14 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.68 — 2026-10-15
+
+### ✨ New
+- The official Muz website — [muzwebsite.vercel.app](https://muzwebsite.vercel.app) — linked from **You › About**.
+
+### 🛠 Improved
+- "Check for updates" now opens the Muz website for install help.
+
 ## 1.0.67 — 2026-10-15
 
 ### 🛠 Improved
