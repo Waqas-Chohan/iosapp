@@ -2,6 +2,12 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.73 — 2026-10-15
+
+### 🐞 Fixed
+- **Android:** downloaded songs and videos now play (they stayed paused before).
+- **Android:** you feel a short vibration when you add a song to the queue.
+
 ## 1.0.72 — 2026-10-15
 
 ### 🛠 Improved
