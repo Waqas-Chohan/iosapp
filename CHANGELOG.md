@@ -2,6 +2,24 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.74 — 2026-10-16
+
+### ✨ New
+- Welcome screens for new users: pick favourite artists and moods so Home has music for you from day one
+- Muz Wrapped: your top songs, top artists and minutes each month, as a picture you can share
+- Listening history and a Recently played row on Home
+- Smart Radio: when your queue ends, Muz keeps playing similar songs
+- Crossfade (0–12 seconds) and gap-free start of the next streamed song
+- Equalizer with Bass Boost, Vocal, Qawwali, Treble, Pop, Rock and Night presets, plus your own curve (Android)
+- Notifications for new songs from your favourite artists and for new Muz versions
+- Android home-screen widget with artwork and play / pause / next / previous
+- Privacy Policy and Terms of Use in the app and on the website
+
+### 🛠 Improved
+- Clear "No internet", "Song unavailable" and "No results" screens with a Try again button
+- An offline bar shows when there is no connection (downloads still play)
+- Crash reports help fix problems faster
+
 ## 1.0.73 — 2026-10-15
 
 ### 🐞 Fixed
