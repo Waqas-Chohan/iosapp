@@ -2,6 +2,14 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.75 — 2026-10-16
+
+### ✨ New
+- Optional Muz account: sign in with Google or email + password (You › Account)
+- Muz Premium (Rs 199 a month or Rs 1,499 a year): unlimited downloads, HD video, equalizer, crossfade, Listen Together hosting, Wrapped sharing and 5 devices
+- Pay with Easypaisa and send the transaction ID on WhatsApp from the app
+- Account screen: your plan, your devices (sign one out remotely), change password, delete account
+
 ## 1.0.74 — 2026-10-16
 
 ### ✨ New
