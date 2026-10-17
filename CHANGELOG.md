@@ -2,6 +2,12 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.76 — 2026-10-17
+
+### ✨ New
+- A message from Muz pops up when your plan changes (for example when Premium is switched on)
+- Your account shows each device by its model (e.g. iPhone 13, Samsung A30s)
+
 ## 1.0.75 — 2026-10-16
 
 ### ✨ New
