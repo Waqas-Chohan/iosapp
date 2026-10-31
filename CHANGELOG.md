@@ -2,6 +2,12 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.77 — 2026-10-31
+
+### 🐞 Fixed
+- M4A audio downloads no longer fail with a "PlatformException" when they finish
+- HD video downloads (merged video + sound) finish properly too
+
 ## 1.0.76 — 2026-10-17
 
 ### ✨ New
