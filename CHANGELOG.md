@@ -2,6 +2,25 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.80 — 2026-11-02
+
+### ✨ New
+- Heart any song: it goes straight into your new Liked Songs playlist (with a little vibration)
+- Swipe a downloaded song or video to the left to delete it from Muz and Photos (asks first)
+- Your own covers: pick a photo as the cover of any song or playlist (⋮ menu)
+- You › Customize: app icons (Premium), glass transparency, Muz logo colour, Wrapped on Home on / off and the starter animation on / off
+- New video player: tap for controls, ±10 seconds, heart and ⋮ menu, and a proper full screen with a seek bar, loop, background and queue
+
+### 🛠 Improved
+- Menus and questions are now frosted glass and sit flush with the bottom of the screen
+- Song covers are no longer zoomed in
+- Tapping Home takes you back to the top of Home
+- Swipe a finished download to the left to clear it from the Downloads list
+
+### 🐞 Fixed
+- Videos no longer pause for a second when you leave the app (they carry on in the Dynamic Island)
+- Android: swiping back from the edge of the screen no longer freezes the page
+
 ## 1.0.77 — 2026-10-31
 
 ### 🐞 Fixed
