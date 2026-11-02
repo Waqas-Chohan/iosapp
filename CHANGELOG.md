@@ -2,6 +2,14 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.81 — 2026-11-02
+
+### ✨ New
+- A brand-new Search page: colourful category tiles with artist photos (they stay on your phone for offline), tap one to search it
+- Search mode: the bar slides up, a round ✕ appears, and you can switch between Online and your Library; recent searches are remembered
+- Voice search: tap the mic and say a song or an artist
+- The mini player is now a floating glass bar: drag it up to open the full player, swipe the full player down to shrink it back, swipe the bar left / right for next / previous
+
 ## 1.0.80 — 2026-11-02
 
 ### ✨ New
