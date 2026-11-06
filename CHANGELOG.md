@@ -2,6 +2,13 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.83 — 2026-11-06
+
+### ✨ New
+- Invite people to a shared playlist by their email or name (they get an invite with Accept / Decline)
+- You › Activity: invites, friends playing your playlists and new songs they add
+- Notifications for shared playlists, with switches for each kind and muting of people or playlists
+
 ## 1.0.81 — 2026-11-02
 
 ### ✨ New
