@@ -2,6 +2,11 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.85 — 2026-11-06
+
+### 🐞 Fixed
+- Android: Muz closed straight away (“Muz keeps stopping”) in 1.0.83 and 1.0.84. It opens normally again.
+
 ## 1.0.84 — 2026-11-06
 
 ### ✨ New
