@@ -2,6 +2,11 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.84 — 2026-11-06
+
+### ✨ New
+- Import playlists (Premium): Library › ⋯ › Import playlist. Paste a Spotify link (from Spotify or WhatsApp) or choose a playlist file (CSV from Exportify / TuneMyMusic). Muz finds every song on YouTube and lets you check the matches before saving.
+
 ## 1.0.83 — 2026-11-06
 
 ### ✨ New
