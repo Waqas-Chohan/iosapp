@@ -2,6 +2,23 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.87 — 2026-11-06
+
+### ✨ New
+- Listen Together pop-ups: see when friends join or leave, and invite everyone in the playlist with one tap (they get a notification with Join).
+- Download all: one button at the top of every playlist downloads the songs you don't have yet.
+- Pin playlists to the top of Library and Home (playlist ⋯ › Pin).
+- Choose your own cover for shared playlists too.
+- Share a playlist straight to Muz friends by email or name.
+- The player background takes its colours from the song's cover.
+
+### 🛠 Improved
+- Player: a short, bold song name on the left (Spotify style); the bars stop when the song is paused.
+- Songs you download now play from the download inside your playlists.
+
+### 🐞 Fixed
+- Listen Together: listeners can't accidentally change the song any more (a message explains why), and Android listeners now follow the host's songs even when Muz is in the background.
+
 ## 1.0.85 — 2026-11-06
 
 ### 🐞 Fixed
