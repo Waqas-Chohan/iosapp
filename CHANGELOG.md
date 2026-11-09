@@ -2,6 +2,25 @@
 
 All notable changes to Muz. Newest first.
 
+## 1.0.89 — 2026-11-09
+
+### ✨ New
+- Muz Wrapped plays as stories: tap through your month with numbers that count up and colours from your top song.
+- A new Muz Wrapped picture on Home that matches your theme.
+- The player background slowly moves with colours from the song's cover.
+- Lyrics: the current line glows in the cover's colour, the others softly blur.
+- Pinch or double-tap the cover in the player to see it full screen.
+- The cover grows smoothly from the mini player into the full player.
+
+### 🛠 Improved
+- Shimmering placeholders instead of spinners while songs load.
+- You tab: your account is back on top; Activity moved under Notifications.
+- Profile: the "Your name" label sits neatly above the box.
+
+### 🐞 Fixed
+- Swiping the mini player up now opens the player on the first try.
+- Search: removed the extra small ✕ inside the search box.
+
 ## 1.0.87 — 2026-11-06
 
 ### ✨ New
